@@ -4,104 +4,84 @@
 
 ```mermaid
 erDiagram
-    Line ||--o{ TrainStatus : has
-    
-    Line {
-        string id PK "odpt.Railway:JR-East.ChuoRapid"
-        string name "中央線快速"
-        string operator "JR東日本"
-        string color "#F15A22"
-        datetime created_at
-    }
-    
-    TrainStatus {
+    StationDeparture {
         int id PK
-        string line_id FK
-        string status "normal/delay/suspended"
-        string cause
-        int delay_minutes
-        datetime timestamp
+        string station_name "駅名"
+        string railway_id "路線ID"
+        string direction "方向"
+        string departure_time "出発時刻/到着時刻"
+        string train_number "列車番号"
+        string destination_station "行き先"
+    }
+
+    StationInterval {
+        int id PK
+        string from_station "出発駅"
+        string to_station "到着駅"
+        float travel_time "平均所要時間(分)"
+    }
+
+    StationOrder {
+        int id PK
+        string railway_id "路線ID"
+        string station_name "駅名"
+        int station_index "駅順序"
     }
 ```
 
 ---
 
-## テーブル定義
+## テーブル詳細
 
-### lines（路線マスター）
+### 1. `station_departures` (時刻表データ)
+列車の発着情報を格納。経路探索の核となるデータ。
+`fetch_timetables.py` により `odpt:TrainTimetable` から生成される。
 
-| カラム | 型 | NULL | 説明 |
+| カラム | 型 | 説明 | 備考 |
 |---|---|---|---|
-| id | VARCHAR(100) | NO | 主キー（ODPT形式ID） |
-| name | VARCHAR(50) | NO | 路線名 |
-| name_en | VARCHAR(50) | YES | 路線名（英語） |
-| operator | VARCHAR(50) | NO | 運営会社 |
-| color | VARCHAR(7) | YES | ラインカラー（HEX） |
-| created_at | DATETIME | NO | 作成日時 |
-| updated_at | DATETIME | NO | 更新日時 |
+| id | Integer | PK | |
+| station_id | String | 駅ID | `odpt.Station:JR-East.Chuo.Tokyo` |
+| station_name | String | 駅名 | `Tokyo` |
+| railway_id | String | 路線ID | `odpt.Railway:JR-East.Chuo` |
+| direction | String | 方面 | `Outbound` / `Inbound` |
+| departure_time | String | 時刻 | `HH:MM` 形式 (終着駅は到着時刻) |
+| train_type | String | 列車種別 | `Rapid`, `Local` 等 |
+| destination_station | String | 行き先駅名 | |
+| train_number | String | 列車番号 | `1234F` |
+| weekday_type | String | 曜日区分 | `Weekday`, `Saturday`, `Holiday` |
 
-**インデックス**
-- PRIMARY KEY (id)
+**インデックス**:
+- `(station_name, direction, departure_time)`: 経路探索の列車検索用
 
 ---
 
-### train_statuses（運行状況履歴）
+### 2. `station_intervals` (駅間所要時間)
+隣接する駅間の平均所要時間を格納。グラフのエッジ重みとして使用。
+`extract_travel_times.py` により実績ダイヤから算出される。
 
-| カラム | 型 | NULL | 説明 |
+| カラム | 型 | 説明 | 備考 |
 |---|---|---|---|
-| id | INTEGER | NO | 主キー（自動増分） |
-| line_id | VARCHAR(100) | NO | 外部キー → lines.id |
-| status | VARCHAR(20) | NO | normal / delay / suspended |
-| cause | VARCHAR(200) | YES | 遅延・運休の原因 |
-| delay_minutes | INTEGER | YES | 遅延時間（分） |
-| timestamp | DATETIME | NO | 記録日時 |
-
-**インデックス**
-- PRIMARY KEY (id)
-- INDEX (line_id)
-- INDEX (timestamp)
-- INDEX (line_id, timestamp)
+| id | Integer | PK | |
+| from_station_id | String | 出発駅ID | |
+| to_station_id | String | 到着駅ID | |
+| from_station | String | 出発駅名 | |
+| to_station | String | 到着駅名 | |
+| travel_time | Float | 所要時間(分) | 0時またぎを考慮した平均値 |
+| railway_id | String | 路線ID | |
 
 ---
 
-## 設計方針
+### 3. `station_orders` (駅順序マスタ)
+路線の駅順序情報。方向判定（上り/下り）に使用。
+`fetch_station_order.py` により生成。
 
-### 1. 正規化
-- 路線情報は `lines` テーブルに分離（マスターデータ）
-- `train_statuses` は履歴データとして蓄積
+| カラム | 型 | 説明 | 備考 |
+|---|---|---|---|
+| id | Integer | PK | |
+| railway_id | String | 路線ID | |
+| station_id | String | 駅ID | |
+| station_name | String | 駅名 | |
+| station_index | Integer | 順序 | 1からの連番 |
 
-### 2. パフォーマンス
-- `(line_id, timestamp)` の複合インデックスで時間範囲クエリを高速化
-- 過去データは定期的にアーカイブ or 削除を検討
-
-### 3. 拡張性
-- 将来的に `stations`（駅マスター）を追加可能
-- `weather`（天気情報）との紐付けも検討
-
----
-
-## マイグレーション
-
-既存の `traffic_logs` テーブルから移行する際の手順：
-
-1. 新テーブル `lines`, `train_statuses` を作成
-2. 既存データを移行
-3. `traffic_logs` を削除
-
-```sql
--- 1. 新テーブル作成
-CREATE TABLE lines (...);
-CREATE TABLE train_statuses (...);
-
--- 2. データ移行
-INSERT INTO lines (id, name, operator, color, created_at, updated_at)
-VALUES 
-  ('odpt.Railway:JR-East.ChuoRapid', '中央線快速', 'JR東日本', '#F15A22', NOW(), NOW()),
-  ...;
-
-INSERT INTO train_statuses (line_id, status, cause, delay_minutes, timestamp)
-SELECT route_id, description, NULL, delay_minutes, timestamp FROM traffic_logs;
-
--- 3. 旧テーブル削除
-DROP TABLE traffic_logs;
-```
+**特記ロジック**:
+- 山手線などの環状線は、インデックス差分と閾値を比較して時計回り/反時計回りを判定する。

@@ -1,64 +1,58 @@
 # ディレクトリ構造
 
-> **注意**: これは実装完了後の**目標構造**です。現状とは異なる部分があります。
+> **注意**: リアルタイム更新される現在の実装構造です。
 
 ```
 opendata/
-├── .agent/
-│   ├── plan/                    # 計画書
-│   │   ├── overview.md
-│   │   ├── ui_design.md
-│   │   ├── data_sources.md
-│   │   ├── tasks.md
-│   │   └── structure.md         # このファイル
-│   └── project_strategy.md      # プロジェクト戦略
+├── .agent/                  # エージェント用ドキュメント
+│   ├── plan/                # 設計・計画書
+│   │   ├── structure.md     # 本ファイル
+│   │   ├── api_design.md    # API仕様
+│   │   ├── db_schema.md     # DBスキーマ
+│   │   ├── tasks.md         # タスク一覧
+│   │   └── ...
+│   └── project_strategy.md
 │
 ├── backend/
-│   ├── venv/                    # Python仮想環境
-│   ├── main.py                  # FastAPIエントリポイント
-│   ├── db/                      # データベース層
-│   │   ├── __init__.py          # モジュールエクスポート
-│   │   ├── database.py          # DB接続設定
-│   │   └── models.py            # SQLAlchemyモデル
-│   ├── services/                # サービス層（ビジネスロジック）
-│   │   ├── __init__.py          # モジュールエクスポート
-│   │   ├── odpt_client.py       # ODPT APIクライアント
-│   │   ├── collector.py         # データ収集スクリプト
-│   │   └── risk_calculator.py   # リスク算出ロジック
-│   └── data.db                  # SQLiteデータベース
+│   ├── venv/
+│   ├── main.py              # FastAPIエントリーポイント
+│   ├── db/
+│   │   ├── __init__.py
+│   │   ├── database.py      # DB接続設定
+│   │   └── models.py        # SQLAlchemyモデル定義
+│   ├── routers/
+│   │   ├── __init__.py
+│   │   ├── search.py        # 経路探索API
+│   │   ├── stations.py      # 駅情報API
+│   │   └── timetable.py     # 時刻表API
+│   ├── services/
+│   │   ├── __init__.py
+│   │   ├── odpt_client.py   # ODPT APIクライアント
+│   │   ├── route_graph.py   # 経路グラフ構築・Dijkstra探索
+│   │   ├── fetch_timetables.py    # 時刻表データ収集バッチ
+│   │   ├── fetch_station_order.py # 駅順データ収集バッチ
+│   │   ├── extract_travel_times.py # 所要時間算出バッチ
+│   │   └── timetable/       # 探索ロジック詳細
+│   │       ├── core.py      # コア探索ロジック
+│   │       ├── finder.py    # 列車検索ロジック
+│   │       ├── direction.py # 方向判定ロジック
+│   │       └── utils.py     # 時間ユーティリティ
+│   └── data.db              # SQLiteデータベース
 │
 ├── frontend/
-│   ├── index.html               # ホーム画面（路線一覧）
-│   ├── detail.html              # 路線詳細画面（※routes.html/result.htmlを統合）
-│   ├── main.js                  # ホーム画面のJS
-│   ├── detail.js                # 詳細画面のJS
-│   ├── style.css                # Tailwind CSSエントリ
-│   ├── vite.config.js           # Vite設定
-│   └── package.json
+│   ├── index.html           # 検索ページエントリ
+│   ├── detail.html          # 結果ページエントリ
+│   ├── vite.config.js       # Vite設定
+│   ├── style.css            # Tailwindロード
+│   └── src/
+│       ├── components/
+│       │   └── Timeline.js  # タイムライン表示コンポーネント
+│       ├── pages/
+│       │   ├── home.js      # 検索ページロジック
+│       │   └── detail.js    # 結果ページロジック
+│       └── lib/
+│           ├── api.js       # API呼び出し
+│           └── utils.js     # 共通ユーティリティ
 │
-└── README.md                    # プロジェクト説明
+└── README.md
 ```
-
----
-
-## ファイル詳細
-
-### バックエンド
-
-| ファイル | 役割 |
-|---|---|
-| `main.py` | APIルーティング（/lines, /lines/{id}/status など） |
-| `database.py` | SQLite接続、セッション管理 |
-| `models.py` | Line, TrainStatus などのテーブル定義 |
-| `odpt_client.py` | ODPT APIへのHTTPリクエスト処理 |
-| `collector.py` | 定期実行で運行情報を収集しDBに保存 |
-| `risk_calculator.py` | 過去データから遅延リスクを算出 |
-
-### フロントエンド
-
-| ファイル | 役割 |
-|---|---|
-| `index.html` | 路線一覧カードを表示 |
-| `detail.html` | 選択した路線のリスク詳細を表示 |
-| `main.js` | API呼び出し、カードレンダリング |
-| `detail.js` | API呼び出し、Chart.jsでグラフ描画 |

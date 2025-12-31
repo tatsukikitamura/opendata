@@ -1,25 +1,36 @@
-# 実装タスク
+# 残タスク一覧
 
-## Phase 1: データ基盤
-- [ ] ODPT APIクライアント実装
-  - [ ] 路線一覧取得
-  - [ ] 運行情報取得
-- [ ] DBスキーマ設計
-  - [ ] 路線マスター
-  - [ ] 運行情報履歴
-- [ ] 定期データ収集スクリプト
+## 完了済み (Implemented)
+- [x] **Backend Infrastructure**
+    - [x] setup FastAPI & SQLite
+    - [x] ODPT API Integration (`odpt_client.py`)
+- [x] **Route Search Engine**
+    - [x] Graph Construction (`route_graph.py`)
+    - [x] Dijkstra Algorithm Implementation
+- [x] **Timetable Integration**
+    - [x] `StationDeparture` Model & Data Ingestion
+    - [x] `train_number` based connection logic
+    - [x] Accurate direction handling (`StationOrder`)
+    - [x] Terminal station Arrival Time logic (`TrainTimetable`)
+- [x] **Frontend**
+    - [x] Route Input UI
+    - [x] Timeline Visualization
+    - [x] Refactoring to `src/` component structure
 
-## Phase 2: リスク算出
-- [ ] 遅延リスクスコア計算ロジック
-  - [ ] 過去N日間の遅延率
-  - [ ] 時間帯別傾向
+---
 
-## Phase 3: バックエンドAPI
-- [ ] `GET /lines` - 路線一覧
-- [ ] `GET /lines/{id}/status` - リアルタイム状況
-- [ ] `GET /lines/{id}/risk` - リスク分析
+## 今後の課題 (Backlog)
 
-## Phase 4: フロントエンド
-- [ ] ホーム画面（路線一覧）
-- [ ] 詳細画面（リスク分析）
-- [ ] グラフ表示（Chart.js）
+### 1. 遅延リスク・混雑予測 (当初の目標)
+- [ ] 運行情報API (`odpt:TrainInformation`) の取り込み
+- [ ] リアルタイム遅延の経路探索への反映
+- [ ] 過去データに基づく「遅延リスク」の算出ロジック再実装
+
+### 2. UX/UI 改善
+- [ ] 駅名オートコンプリート
+- [ ] 「一本前/一本後」の検索
+- [ ] 経由地の指定
+
+### 3. パフォーマンス最適化
+- [ ] DBインデックスのチューニング
+- [ ] 大量データ取得時のバッチ高速化

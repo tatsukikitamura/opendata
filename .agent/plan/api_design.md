@@ -1,118 +1,73 @@
-# API設計
+# API設計仕様
 
 ## ベースURL
-```
-http://localhost:8000/api/v1
-```
+`http://localhost:8000`
 
 ---
 
-## エンドポイント一覧
+## 経路探索 API
 
-| メソッド | パス | 説明 |
-|---|---|---|
-| GET | `/lines` | 路線一覧を取得 |
-| GET | `/lines/{line_id}` | 路線詳細を取得 |
-| GET | `/lines/{line_id}/status` | 現在の運行状況を取得 |
-| GET | `/lines/{line_id}/risk` | 遅延リスク分析を取得 |
+### 1. 時刻表付き経路検索
+実際の時刻表データに基づき、乗り換え待ち時間を含めた正確な行程を算出する。
 
----
+- **URL**: `/search_with_times`
+- **Method**: `GET`
 
-## 詳細
+**パラメータ**:
+| 名前 | 必須 | 説明 | 例 |
+|---|---|---|---|
+| from_station | Yes | 出発駅名 | `東京` |
+| to_station | Yes | 到着駅名 | `新宿` |
+| time | Yes | 出発希望時刻 | `10:00` |
 
-### GET `/lines`
-路線一覧を取得する。
-
-**レスポンス**
+**レスポンス**:
 ```json
 {
-  "lines": [
+  "from": "東京",
+  "to": "新宿",
+  "theoretical_time": 15.0,  // 合計所要時間（分）
+  "transfers": 1,            // 乗換回数
+  "requested_departure": "10:00",
+  "segments": [              // 行程セグメントのリスト
     {
-      "id": "odpt.Railway:JR-East.ChuoRapid",
-      "name": "中央線快速",
-      "color": "#F15A22",
-      "current_status": "normal"
+      "from": "東京",
+      "to": "御茶ノ水",
+      "railway": "中央線快速",
+      "departure_time": "10:05", // 発車時刻
+      "arrival_time": "10:09",   // 到着時刻
+      "train_type": "Rapid",
+      "destination": "Takao",
+      "train_number": "1034T"
+    },
+    {
+      "from": "御茶ノ水",
+      "to": "新宿",
+      "railway": "中央・総武各駅停車",
+      "departure_time": "10:15",
+      "arrival_time": "10:20",
+      "train_type": "Local",
+      ...
     }
   ]
 }
 ```
 
-| フィールド | 型 | 説明 |
-|---|---|---|
-| id | string | 路線ID（ODPT形式） |
-| name | string | 路線名（日本語） |
-| color | string | ラインカラー（HEX） |
-| current_status | string | 現在の状況（normal/delay/suspended） |
+**エラーレスポンス**:
+- `404 Not Found`: 駅が見つからない場合
+- `400 Bad Request`: ルートが見つからない、または入力不正
 
 ---
 
-### GET `/lines/{line_id}`
-指定した路線の詳細情報を取得する。
+### 2. 単純経路検索 (Legacy)
+時刻表を使わず、グラフ構造のみで理論上の最短経路を検索する（デバッグ用）。
 
-**パラメータ**
-- `line_id`: 路線ID
-
-**レスポンス**
-```json
-{
-  "id": "odpt.Railway:JR-East.ChuoRapid",
-  "name": "中央線快速",
-  "color": "#F15A22",
-  "stations": ["東京", "神田", "御茶ノ水", "..."],
-  "operator": "JR東日本"
-}
-```
+- **URL**: `/search`
+- **Method**: `GET`
+- **パラメータ**: `from_station`, `to_station`
 
 ---
 
-### GET `/lines/{line_id}/status`
-指定した路線の現在の運行状況を取得する。
+## その他 API
 
-**レスポンス**
-```json
-{
-  "line_id": "odpt.Railway:JR-East.ChuoRapid",
-  "status": "delay",
-  "status_text": "遅延",
-  "cause": "混雑の影響",
-  "updated_at": "2025-12-29T22:30:00+09:00"
-}
-```
-
-| フィールド | 型 | 説明 |
-|---|---|---|
-| status | string | normal / delay / suspended |
-| status_text | string | 日本語表記 |
-| cause | string | 原因（あれば） |
-| updated_at | datetime | 最終更新日時 |
-
----
-
-### GET `/lines/{line_id}/risk`
-指定した路線の遅延リスク分析を取得する。
-
-**クエリパラメータ**
-- `hour` (optional): 時間帯（0-23）
-
-**レスポンス**
-```json
-{
-  "line_id": "odpt.Railway:JR-East.ChuoRapid",
-  "probability": 75,
-  "level": "High",
-  "description": "過去7日間で遅延率が高い路線です。",
-  "hourly_breakdown": [
-    {"hour": 7, "probability": 85},
-    {"hour": 8, "probability": 90},
-    {"hour": 9, "probability": 60}
-  ],
-  "advice": "朝8時台は特に遅延が発生しやすいです。余裕を持って出発しましょう。"
-}
-```
-
-| フィールド | 型 | 説明 |
-|---|---|---|
-| probability | int | 遅延確率（0-100） |
-| level | string | Low / Medium / High |
-| hourly_breakdown | array | 時間帯別の遅延確率 |
-| advice | string | アドバイステキスト |
+### 駅情報
+- `GET /stations`: 登録されている駅一覧を返す（オートコンプリート用などを想定）
