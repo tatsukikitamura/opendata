@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: "Noto Sans JP", sans-serif;
+}
+
 /* Custom Glass Panel */
 .glass-panel {
   background: rgba(255, 255, 255, 0.05);
