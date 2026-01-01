@@ -2,7 +2,7 @@ name: Collect Delay Data
 
 on:
   schedule:
-    - cron: '*/5 * * * *'  # Run every 5 minutes
+    - cron: '*/10 * * * *'  # Run every 10 minutes
   workflow_dispatch:  # Allow manual trigger
 
 permissions:

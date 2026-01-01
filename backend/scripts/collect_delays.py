@@ -71,21 +71,42 @@ def fetch_gtfs_rt():
         return None
 
 def save_json(data):
-    """Save data to JSON file with timestamp."""
+    """Save data to daily JSON Lines file."""
     if not data:
         print("No data to save.")
         return
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
-    filename = DATA_DIR / f"delay_{timestamp}.json"
+    # Use daily filename: delay_YYYYMMDD.jsonl
+    today = datetime.datetime.now().strftime("%Y%m%d")
+    filename = DATA_DIR / f"delay_{today}.jsonl"
     
-    with open(filename, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
+    # Check for duplicates (simple check based on timestamp of first record)
+    # In a real scenario, we might want to check file content, but for now 
+    # we just append.
     
-    print(f"Saved {len(data)} records to {filename}")
+    with open(filename, "a", encoding="utf-8") as f:
+        # Save as one JSON object per line (JSON Lines)
+        # We wrap the list in a wrapper object with timestamp for easier parsing later
+        record = {
+            "fetched_at": datetime.datetime.now().isoformat(),
+            "data": data
+        }
+        f.write(json.dumps(record, ensure_ascii=False) + "\n")
+    
+    print(f"Appended {len(data)} records to {filename}")
 
 if __name__ == "__main__":
+    # Skip during late night (01:30 - 04:00)
+    now = datetime.datetime.now()
+    current_time = now.time()
+    skip_start = datetime.time(1, 30)
+    skip_end = datetime.time(4, 0)
+    
+    if skip_start <= current_time <= skip_end:
+        print("Skipping execution during late night maintenance window (01:30 - 04:00)")
+        exit(0)
+        
     data = fetch_gtfs_rt()
     save_json(data)
