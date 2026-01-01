@@ -53,15 +53,32 @@ function renderRouteTabs() {
         const lastSeg = segments.length > 0 ? segments[segments.length - 1] : null;
         const arrival = lastSeg?.arrival_time || "?";
         const transfers = route.transfers || 0;
+        const risk = route.risk || { level: 'LOW' };
+        
+        let bgClass = "bg-slate-700/50 text-slate-300 hover:bg-slate-600/50";
+        let ringClass = "";
+
+        if (index === activeRouteIndex) {
+            bgClass = "bg-rose-500 text-white";
+            if (risk.level === 'HIGH') bgClass = "bg-red-600 text-white";
+            else if (risk.level === 'MEDIUM') bgClass = "bg-amber-600 text-white";
+        } else {
+            // Inactive tabs showing risk awareness
+             if (risk.level === 'HIGH') ringClass = "ring-1 ring-red-500/50 text-red-200";
+             else if (risk.level === 'MEDIUM') ringClass = "ring-1 ring-amber-500/50 text-amber-200";
+        }
         
         const tab = document.createElement("button");
-        tab.className = `flex-shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-            index === activeRouteIndex 
-                ? 'bg-rose-500 text-white' 
-                : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600/50'
-        }`;
+        tab.className = `flex-shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition-all ${bgClass} ${ringClass}`;
+        
+        let riskIcon = "";
+        if (risk.level === 'HIGH') riskIcon = "⚠️";
+        else if (risk.level === 'MEDIUM') riskIcon = "⚠️";
+
         tab.innerHTML = `
-            <span class="block text-lg font-bold">${arrival}</span>
+            <span class="block text-lg font-bold flex items-center gap-1">
+                ${arrival} <span class="text-xs font-normal">${riskIcon}</span>
+            </span>
             <span class="block text-xs opacity-75">乗換${transfers}回</span>
         `;
         tab.addEventListener("click", () => {
@@ -94,30 +111,52 @@ function renderRoute(index) {
     // Update header
     document.getElementById("route-subheader").textContent = `${firstDeparture} 発 → ${arrivalTime} 着`;
     
-    // Render delay warnings
-    renderDelayWarnings(route.delay_warnings || []);
+    // Render delay warnings including Risk
+    renderDelayWarnings(route);
     
     // Render timeline
     renderTimeline(segments);
 }
 
-function renderDelayWarnings(warnings) {
+function renderDelayWarnings(route) {
     const container = document.getElementById("delay-warnings");
     if (!container) return;
     
-    if (warnings.length === 0) {
-        container.classList.add("hidden");
-        return;
-    }
-    
     container.innerHTML = "";
-    container.classList.remove("hidden");
     
-    warnings.forEach(warning => {
+    const realTimeWarnings = route.delay_warnings || [];
+    const risk = route.risk || { level: 'LOW', reasons: [] };
+    
+    let hasContent = false;
+
+    // 1. Predictive Risk
+    if (risk.level !== 'LOW' && risk.reasons.length > 0) {
+        hasContent = true;
+        const colorClass = risk.level === 'HIGH' 
+            ? "bg-red-500/20 border-red-500/50 text-red-200" 
+            : "bg-amber-500/20 border-amber-500/50 text-amber-200";
+            
+        const el = document.createElement("div");
+        el.className = `${colorClass} border rounded-xl p-4 mb-2`;
+        el.innerHTML = `
+            <div class="flex items-center gap-2 mb-2">
+                <span class="text-xl">⚠️</span>
+                <span class="font-bold">遅延リスク: ${risk.level === 'HIGH' ? '高い' : '中程度'}</span>
+            </div>
+            <ul class="list-disc list-inside text-sm opacity-90 pl-1">
+                ${risk.reasons.map(r => `<li>${r}</li>`).join('')}
+            </ul>
+        `;
+        container.appendChild(el);
+    }
+
+    // 2. Real-time Warnings
+    realTimeWarnings.forEach(warning => {
+        hasContent = true;
         const el = document.createElement("div");
         el.className = "bg-amber-500/20 border border-amber-500/50 rounded-xl p-4 mb-2 flex items-center gap-3";
         el.innerHTML = `
-            <span class="text-2xl">⚠️</span>
+            <span class="text-2xl">⚡️</span>
             <div>
                 <p class="text-amber-200 font-medium">${warning.railway}</p>
                 <p class="text-amber-100/70 text-sm">現在 約${warning.delay_minutes}分の遅延が発生しています</p>
@@ -125,4 +164,10 @@ function renderDelayWarnings(warnings) {
         `;
         container.appendChild(el);
     });
+    
+    if (hasContent) {
+        container.classList.remove("hidden");
+    } else {
+        container.classList.add("hidden");
+    }
 }

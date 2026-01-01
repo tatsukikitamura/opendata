@@ -8,6 +8,7 @@ from db.database import get_db
 from services.route_graph import get_graph
 from services.timetable.core import search_route_with_times
 from services.delay_service import check_route_delay, get_delay_summary
+from services.risk_service import get_route_risk
 from datetime import datetime
 
 router = APIRouter()
@@ -171,8 +172,14 @@ def search_multi_route_api(
     top_routes = candidates[:3]
     
     # Clean up internal fields and add delay warnings
+    current_date = datetime.now().date().isoformat()
+    departure_time_str = f"{current_date}T{search_time}"
+
     for route in top_routes:
         route.pop("_arrival", None)
+        
+        # Add risk score
+        route["risk"] = get_route_risk(route, departure_time_str)
         
         # Add delay warnings
         delay_warnings = []
