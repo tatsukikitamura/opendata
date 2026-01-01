@@ -35,41 +35,9 @@ def fetch_train_timetables():
     
     all_timetables = []
     
-    # Major JR/Metro lines (same list as before)
-    all_railways = [
-        "odpt.Railway:JR-East.ChuoRapid",
-        "odpt.Railway:JR-East.Yamanote",
-        "odpt.Railway:JR-East.ChuoSobuLocal",
-        "odpt.Railway:JR-East.SobuRapid",
-        "odpt.Railway:JR-East.JobanRapid",
-        "odpt.Railway:JR-East.JobanLocal",
-        "odpt.Railway:JR-East.KeihinTohokuNegishi",
-        "odpt.Railway:JR-East.SaikyoKawagoe",
-        "odpt.Railway:JR-East.ShonanShinjuku",
-        "odpt.Railway:JR-East.Tokaido",
-        "odpt.Railway:JR-East.Yokosuka",
-        "odpt.Railway:JR-East.Takasaki",
-        "odpt.Railway:JR-East.Utsunomiya",
-        "odpt.Railway:JR-East.Musashino",
-        "odpt.Railway:JR-East.Keiyo",
-        "odpt.Railway:JR-East.Nambu",
-        "odpt.Railway:JR-East.Yokohama",
-        # Tokyo Metro
-        "odpt.Railway:TokyoMetro.Ginza",
-        "odpt.Railway:TokyoMetro.Marunouchi",
-        "odpt.Railway:TokyoMetro.Hibiya",
-        "odpt.Railway:TokyoMetro.Tozai",
-        "odpt.Railway:TokyoMetro.Chiyoda",
-        "odpt.Railway:TokyoMetro.Yurakucho",
-        "odpt.Railway:TokyoMetro.Hanzomon",
-        "odpt.Railway:TokyoMetro.Namboku",
-        "odpt.Railway:TokyoMetro.Fukutoshin",
-        # Toei Subway
-        "odpt.Railway:Toei.Asakusa",
-        "odpt.Railway:Toei.Mita",
-        "odpt.Railway:Toei.Shinjuku",
-        "odpt.Railway:Toei.Oedo",
-    ]
+    # Import railways from shared constants
+    from services.constants import ALL_RAILWAYS
+    all_railways = ALL_RAILWAYS
     
     for railway in all_railways:
         try:

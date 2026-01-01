@@ -228,25 +228,35 @@ class RouteGraph:
 
         to_set = set(to_stations)
 
-        # Dijkstra's algorithm
-        # Priority queue: (total_time, current_station, path, transfers)
+        # Dijkstra's algorithm with parent tracking (optimized)
+        # Priority queue: (total_time, current_station, transfers)
         pq = []
+        parent = {}  # station -> (prev_station, total_time, transfers)
+        
         for start in from_stations:
-            heapq.heappush(pq, (0, start, [start], 0))
+            heapq.heappush(pq, (0, start, 0))
+            parent[start] = (None, 0, 0)
 
         visited = set()
         
         while pq:
-            total_time, current, path, transfers = heapq.heappop(pq)
+            total_time, current, transfers = heapq.heappop(pq)
 
             if current in to_set:
+                # Reconstruct path from parent chain
+                path = []
+                node = current
+                while node is not None:
+                    path.append(node)
+                    node = parent[node][0]
+                path.reverse()
                 return self._build_result(path, total_time, transfers, transfer_buffer)
 
             if current in visited:
                 continue
             visited.add(current)
 
-            for edge in self.edges.get(current, []):
+            for edge in self.edges[current]:
                 next_station = edge["to"]
                 if next_station in visited:
                     continue
@@ -259,12 +269,12 @@ class RouteGraph:
                     edge_time += transfer_buffer
                     new_transfers += 1
 
-                heapq.heappush(pq, (
-                    total_time + edge_time,
-                    next_station,
-                    path + [next_station],
-                    new_transfers
-                ))
+                new_time = total_time + edge_time
+                
+                # Only add if we haven't found a better path to this station
+                if next_station not in parent or new_time < parent[next_station][1]:
+                    parent[next_station] = (current, new_time, new_transfers)
+                    heapq.heappush(pq, (new_time, next_station, new_transfers))
 
         return {"error": "No route found"}
 

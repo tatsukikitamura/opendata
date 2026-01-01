@@ -143,26 +143,9 @@ def main():
     session.query(StationDeparture).delete()
     session.commit()
     
-    # Railways to fetch
-    railways = [
-        "odpt.Railway:JR-East.ChuoRapid",
-        "odpt.Railway:JR-East.Yamanote",
-        "odpt.Railway:JR-East.ChuoSobuLocal",
-        "odpt.Railway:JR-East.SobuRapid",
-        "odpt.Railway:JR-East.JobanRapid",
-        "odpt.Railway:JR-East.JobanLocal",
-        "odpt.Railway:JR-East.KeihinTohokuNegishi",
-        "odpt.Railway:JR-East.SaikyoKawagoe",
-        "odpt.Railway:JR-East.ShonanShinjuku",
-        "odpt.Railway:JR-East.Tokaido",
-        "odpt.Railway:JR-East.Yokosuka",
-        "odpt.Railway:JR-East.Takasaki",
-        "odpt.Railway:JR-East.Utsunomiya",
-        "odpt.Railway:JR-East.Musashino",
-        "odpt.Railway:JR-East.Keiyo",
-        "odpt.Railway:JR-East.Nambu",
-        "odpt.Railway:JR-East.Yokohama",
-    ]
+    # Railways to fetch (from shared constants)
+    from services.constants import JR_EAST_RAILWAYS
+    railways = JR_EAST_RAILWAYS
     
     total_records = 0
     

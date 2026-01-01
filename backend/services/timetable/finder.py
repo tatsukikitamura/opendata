@@ -22,7 +22,7 @@ def get_arrival_time(
     record = db.query(StationDeparture).filter(
         StationDeparture.train_number == train_number,
         StationDeparture.railway_name == railway_name,
-        StationDeparture.station_name == station_name,
+        StationDeparture.station_name.ilike(station_name),
         StationDeparture.weekday_type == weekday
     ).first()
     
@@ -43,29 +43,9 @@ def find_train_for_segment(
     Find the first train on a specific railway from a station after a given time.
     Includes direction filtering to ensure the train goes towards the destination.
     """
-    # Map Japanese railway names to English (from the graph)
-    railway_mapping = {
-        "中央線快速": "ChuoRapid",
-        "山手線": "Yamanote", 
-        "中央・総武各駅停車": "ChuoSobuLocal",
-        "総武快速線": "SobuRapid",
-        "京浜東北・根岸線": "KeihinTohokuNegishi",
-        "常磐線快速": "JobanRapid",
-        "常磐線各駅停車": "JobanLocal",
-        "埼京・川越線": "SaikyoKawagoe",
-        "湘南新宿ライン": "ShonanShinjuku",
-        "東海道線": "Tokaido",
-        "横須賀線": "Yokosuka",
-        "高崎線": "Takasaki",
-        "宇都宮線": "Utsunomiya",
-        "武蔵野線": "Musashino",
-        "京葉線": "Keiyo",
-        "南武線": "Nambu",
-        "横浜線": "Yokohama",
-    }
-    
-    # Get English railway name
-    railway_en = railway_mapping.get(railway, railway)
+    # Get English railway name (from shared constants)
+    from services.constants import RAILWAY_JA_TO_EN
+    railway_en = RAILWAY_JA_TO_EN.get(railway, railway)
     
     expected_direction = get_expected_direction(db, railway_en, from_station, to_station)
     
@@ -80,7 +60,7 @@ def find_train_for_segment(
     for station_name in search_stations:
         # First try detailed direction if available (but for ChuoSobuLocal we might skip)
         query = db.query(StationDeparture).filter(
-            StationDeparture.station_name == station_name,
+            StationDeparture.station_name.ilike(station_name),
             StationDeparture.railway_name == railway_en,
             StationDeparture.departure_time >= after_time,
             StationDeparture.weekday_type == weekday

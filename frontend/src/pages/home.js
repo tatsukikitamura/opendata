@@ -3,21 +3,12 @@
  */
 import { formatDuration } from '../lib/utils.js';
 
-document.addEventListener("DOMContentLoaded", async () => {
+document.addEventListener("DOMContentLoaded", () => {
     // Set default time to current time
     setCurrentTime();
     
     setupTimeButtons();
     setupSearchForm();
-
-    // Setup autocomplete
-    try {
-        const stations = await fetchStations();
-        setupAutocomplete("from-station", stations);
-        setupAutocomplete("to-station", stations);
-    } catch (e) {
-        console.error("Failed to setup autocomplete:", e);
-    }
 });
 
 function setCurrentTime() {
@@ -76,85 +67,14 @@ function setupSearchForm() {
         params.append("from", fromStation);
         params.append("to", toStation);
         params.append("time", time);
+        
+        // Add transfer buffer if set
+        const transferBuffer = document.getElementById("transfer-buffer")?.value || "0";
+        if (transferBuffer !== "0") {
+            params.append("transfer_buffer", transferBuffer);
+        }
 
         // Navigate to results page
         window.location.href = `/detail.html?${params.toString()}`;
-    });
-}
-
-async function fetchStations() {
-    try {
-        const res = await fetch("http://localhost:8000/stations");
-        if (!res.ok) throw new Error("API Error");
-        return await res.json();
-    } catch (e) {
-        console.error(e);
-        return [];
-    }
-}
-
-function setupAutocomplete(inputId, stations) {
-    const input = document.getElementById(inputId);
-    if (!input) return;
-
-    // Create wrapper for positioning if not exists
-    let wrapper = input.parentElement;
-    if (!wrapper.classList.contains("relative")) {
-        wrapper.classList.add("relative");
-    }
-
-    // Create dropdown element
-    const dropdown = document.createElement("div");
-    dropdown.className = "autocomplete-dropdown hidden";
-    wrapper.appendChild(dropdown);
-
-    // Event listeners
-    input.addEventListener("input", () => {
-        const val = input.value.trim();
-        if (!val) {
-            dropdown.innerHTML = "";
-            dropdown.classList.add("hidden");
-            return;
-        }
-
-        // Filter stations
-        const matches = stations.filter(s => s.includes(val));
-        
-        if (matches.length > 0) {
-            renderDropdown(dropdown, matches, input);
-            dropdown.classList.remove("hidden");
-        } else {
-            dropdown.classList.add("hidden");
-        }
-    });
-
-    // Hide when clicking outside
-    document.addEventListener("click", (e) => {
-        if (!wrapper.contains(e.target)) {
-            dropdown.classList.add("hidden");
-        }
-    });
-    
-    // Focus support
-    input.addEventListener("focus", () => {
-         const val = input.value.trim();
-         if (val) {
-             input.dispatchEvent(new Event('input'));
-         }
-    });
-}
-
-function renderDropdown(dropdown, matches, input) {
-    dropdown.innerHTML = "";
-    matches.forEach(station => {
-        const item = document.createElement("div");
-        item.className = "autocomplete-item";
-        item.textContent = station;
-        item.addEventListener("click", () => {
-            input.value = station;
-            dropdown.innerHTML = "";
-            dropdown.classList.add("hidden");
-        });
-        dropdown.appendChild(item);
     });
 }

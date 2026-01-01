@@ -1,0 +1,47 @@
+name: Collect Delay Data
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'  # Run every 5 minutes
+  workflow_dispatch:  # Allow manual trigger
+
+permissions:
+  contents: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install requests gtfs-realtime-bindings python-dotenv
+      
+      - name: Fetch GTFS-RT and save
+        env:
+          ODPT_ACCESS_TOKEN: ${{ secrets.ODPT_ACCESS_TOKEN }}
+        run: |
+          # Adjust path if script is in backend/scripts
+          python backend/scripts/collect_delays.py
+      
+      - name: Commit and Push if changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # Only commit if new file was created
+          git add backend/data/delays/
+          
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Add delay data $(date +%Y%m%d_%H%M)"
+            git push
+          fi

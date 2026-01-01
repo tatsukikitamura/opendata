@@ -41,6 +41,11 @@ export function renderTimeline(segments) {
                         </span>
                         ${trainInfo ? `<span class="text-xs text-slate-500">${trainInfo}</span>` : ''}
                     </div>
+                    ${segment.note ? `
+                    <div class="text-sm text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2 mt-2">
+                        ⚠️ ${segment.note}
+                    </div>
+                    ` : ''}
                     ${segment.arrival_time ? `
                     <div class="text-sm text-slate-400 flex items-center gap-1 mt-1">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

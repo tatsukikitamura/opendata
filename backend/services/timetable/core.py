@@ -104,12 +104,21 @@ def search_route_with_times(
             current_min = time_to_minutes(current_time_str)
             current_time = minutes_to_time(current_min + transfer_buffer)
         else:
+            # Determine if it's likely "last train passed" or just "no data"
+            current_minutes = time_to_minutes(current_time)
+            is_late_night = current_minutes >= 23 * 60 or current_minutes < 5 * 60
+            
+            if is_late_night:
+                note = f"終電後の可能性があります ({current_time}以降)"
+            else:
+                note = f"時刻表データなし (検索: {from_station_en})"
+            
             timed_segments.append({
                 "from": from_station_ja,
                 "to": to_station_ja,
                 "railway": railway,
                 "departure_time": None,
-                "note": f"時刻表データなし (検索: {from_station_en})"
+                "note": note
             })
 
     # Calculate actual total duration based on first departure and last arrival
