@@ -70,6 +70,21 @@ def fetch_gtfs_rt():
         print(f"Error fetching data: {e}")
         return None
 
+
+# ... existing code ...
+
+# Load .env for local development
+load_dotenv()
+
+from google.transit import gtfs_realtime_pb2
+
+
+# ... existing fetch_gtfs_rt ...
+
+from zoneinfo import ZoneInfo
+
+# ...
+
 def save_json(data):
     """Save data to daily JSON Lines file."""
     if not data:
@@ -78,19 +93,16 @@ def save_json(data):
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     
-    # Use daily filename: delay_YYYYMMDD.jsonl
-    today = datetime.datetime.now().strftime("%Y%m%d")
+    # Use JST for daily filename
+    jst = ZoneInfo("Asia/Tokyo")
+    now_jst = datetime.datetime.now(jst)
+    today = now_jst.strftime("%Y%m%d")
     filename = DATA_DIR / f"delay_{today}.jsonl"
-    
-    # Check for duplicates (simple check based on timestamp of first record)
-    # In a real scenario, we might want to check file content, but for now 
-    # we just append.
     
     with open(filename, "a", encoding="utf-8") as f:
         # Save as one JSON object per line (JSON Lines)
-        # We wrap the list in a wrapper object with timestamp for easier parsing later
         record = {
-            "fetched_at": datetime.datetime.now().isoformat(),
+            "fetched_at": now_jst.isoformat(),
             "data": data
         }
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
@@ -98,15 +110,18 @@ def save_json(data):
     print(f"Appended {len(data)} records to {filename}")
 
 if __name__ == "__main__":
-    # Skip during late night (01:30 - 04:00)
-    now = datetime.datetime.now()
-    current_time = now.time()
-    skip_start = datetime.time(1, 30)
-    skip_end = datetime.time(4, 0)
+    # Skip during late night (01:30 - 04:00 JST)
+    jst = ZoneInfo("Asia/Tokyo")
+    now_jst = datetime.datetime.now(jst)
+    current_time = now_jst.time()
+    
+    skip_start = datetime.datetime.strptime("01:30", "%H:%M").time()
+    skip_end = datetime.datetime.strptime("04:00", "%H:%M").time()
     
     if skip_start <= current_time <= skip_end:
-        print("Skipping execution during late night maintenance window (01:30 - 04:00)")
+        print(f"Skipping execution during late night maintenance window (01:30 - 04:00 JST). Current JST: {current_time}")
         exit(0)
         
+    print(f"Starting collection at {now_jst}")
     data = fetch_gtfs_rt()
     save_json(data)
