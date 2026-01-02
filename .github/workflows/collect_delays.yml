@@ -29,6 +29,15 @@ jobs:
         run: |
           # Adjust path if script is in backend/scripts
           python backend/scripts/collect_delays.py
+          
+          # Move generated files to a temporary location to avoid conflict during checkout
+          # The script generates files in backend/data/delays/
+          mkdir -p ~/temp_delays
+          cp -r backend/data/delays/* ~/temp_delays/ || true
+          
+          # Clean up local changes so checkout works
+          git checkout .
+          git clean -fd
       
       - name: Fetch and Switch to Data Branch
         run: |
@@ -49,8 +58,26 @@ jobs:
             # We want to keep the collected data files
           fi
           
-          # Restore the newly collected file which might be in the workspace but not in the data branch yet
-          # Note: When we switched branch, untracked files (the new jsonl) should stay in workplace
+          # Restore the newly collected file from temp location
+          mkdir -p backend/data/delays
+          
+          # Loop through temp files and append or move
+          for file in ~/temp_delays/*.jsonl; do
+            [ -e "$file" ] || continue
+            filename=$(basename "$file")
+            target="backend/data/delays/$filename"
+            
+            if [ -f "$target" ]; then
+              # If target exists, append content (skipping duplicate lines handled by script logic ideally, or just raw append)
+              # The script produces unique lines per run, so appending is safe.
+              cat "$file" >> "$target"
+              echo "Appended data to existing $target"
+            else
+              # If target doesn't exist, move it there
+              mv "$file" "$target"
+              echo "Created new $target"
+            fi
+          done
           
       - name: Commit and Push to Data Branch
         run: |
