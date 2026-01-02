@@ -11,7 +11,72 @@ from services.delay_service import check_route_delay, get_delay_summary
 from services.risk_service import get_route_risk
 from datetime import datetime
 
+import json
+import os
+
 router = APIRouter()
+
+# Load station stats
+STATS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "station_stats.json")
+STATION_STATS = {}
+if os.path.exists(STATS_FILE):
+    with open(STATS_FILE, "r", encoding="utf-8") as f:
+        STATION_STATS = json.load(f)
+
+def get_crowd_metrics(route_segments):
+    """
+    Calculate route crowdedness based on station volume.
+    Returns:
+        dict: {
+            "score": int (average daily passengers),
+            "level": str (HIGH/MEDIUM/LOW),
+            "details": list (strings)
+        }
+    """
+    if not STATION_STATS:
+        return {"score": 0, "level": "UNKNOWN", "details": []}
+        
+    stations = set()
+    # Collect all unique stations used (From and To)
+    for seg in route_segments:
+        stations.add(seg.get("from"))
+        stations.add(seg.get("to"))
+        
+    if not stations:
+        return {"score": 0, "level": "UNKNOWN", "details": []}
+        
+    total_volume = 0
+    count = 0
+    details = []
+    
+    for station in stations:
+        # Simple lookup (exact match)
+        # Verify if mapped station name needs normalization? 
+        # The search uses Japanese names (e.g. "東京"), stats usage Japanese keys.
+        vol = STATION_STATS.get(station, 0)
+        if vol > 0:
+            total_volume += vol
+            count += 1
+            details.append(f"{station}: {vol//1000}k")
+            
+    if count == 0:
+        return {"score": 0, "level": "LOW", "details": []}
+        
+    avg_volume = total_volume // count
+    
+    # Thresholds
+    if avg_volume > 150000:
+        level = "HIGH"
+    elif avg_volume > 50000:
+        level = "MEDIUM"
+    else:
+        level = "LOW"
+        
+    return {
+        "score": avg_volume,
+        "level": level,
+        "details": details
+    }
 
 
 @router.get("/search")
@@ -194,5 +259,9 @@ def search_multi_route_api(
                         "delay_minutes": delay_sec // 60
                     })
         route["delay_warnings"] = delay_warnings
+        
+        # Add Crowd Metrics
+        route["crowd"] = get_crowd_metrics(route.get("segments", []))
+
     
     return {"routes": top_routes, "total_found": len(candidates)}

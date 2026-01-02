@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+body {
+  font-family: 'Sora', 'Noto Sans JP', sans-serif;
+}
+
+code, pre, .font-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
 /* Glassmorphism Utilities */
 .glass-panel {
   background: rgba(30, 41, 59, 0.7);

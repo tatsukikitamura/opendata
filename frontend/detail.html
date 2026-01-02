@@ -7,7 +7,7 @@
     <title>検索結果 - 乗換案内</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap"
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Sora:wght@100..800&family=Noto+Sans+JP:wght@300;400;500;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
@@ -63,20 +63,24 @@
                 <!-- Result State -->
                 <div id="result-state" class="hidden">
                     
-                    <!-- Route Tabs -->
-                    <div id="route-tabs" class="flex gap-2 mb-4 overflow-x-auto pb-2">
-                        <!-- Dynamically populated -->
+                    <!-- View Mode: List vs Detail -->
+                    <!-- 1. Route List (Master View) -->
+                    <div id="route-list-view" class="space-y-3">
+                        <h2 class="text-slate-400 text-sm mb-4">経路候補を選択してください</h2>
+                        <div id="route-list-container" class="space-y-3">
+                            <!-- Dynamically populated route cards -->
+                        </div>
                     </div>
-                    
-                    <!-- Delay Warnings -->
-                    <div id="delay-warnings" class="hidden mb-4">
-                        <!-- Dynamically populated -->
-                    </div>
-                    
-                    <!-- Active Route Content -->
-                    <div id="active-route-content">
-                        <!-- Summary Card -->
-                        <div class="bg-gradient-to-r from-rose-500/20 to-pink-500/20 rounded-2xl p-5 mb-6 border border-rose-500/30">
+
+                    <!-- 2. Route Detail (Detail View) -->
+                    <div id="route-detail-view" class="hidden relative">
+                        <button id="back-to-list" class="mb-4 text-slate-400 hover:text-white flex items-center gap-1 text-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                            候補一覧に戻る
+                        </button>
+                        
+                        <!-- Header Summary -->
+                         <div class="bg-gradient-to-r from-rose-500/20 to-pink-500/20 rounded-2xl p-5 mb-6 border border-rose-500/30">
                             <div class="flex justify-between items-center">
                                 <div>
                                     <p class="text-slate-400 text-xs uppercase tracking-wider mb-1">出発時刻</p>
@@ -93,10 +97,12 @@
                             </div>
                         </div>
 
-                        <!-- Route Timeline -->
-                        <div class="space-y-0" id="route-timeline">
-                            <!-- Dynamically populated -->
-                        </div>
+                        <!-- Risk / Delay Warnings -->
+                        <div id="delay-warnings" class="hidden mb-6"></div>
+
+                        <!-- Timeline -->
+                        <h3 class="text-slate-300 font-bold mb-4 border-b border-slate-700 pb-2">経路詳細</h3>
+                        <div class="space-y-0" id="route-timeline"></div>
                     </div>
 
                 </div>
