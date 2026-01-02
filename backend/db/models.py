@@ -34,3 +34,13 @@ class StationInterval(Base):
     to_station = Column(String, index=True)
     railway_name = Column(String, index=True)
     time_minutes = Column(Float)
+
+class DelayLog(Base):
+    __tablename__ = "delay_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    timestamp = Column(String, index=True) # ISO format string
+    trip_id = Column(String, index=True)
+    route_id = Column(String, index=True)
+    max_delay = Column(Integer)
+    vehicle_id = Column(String)

@@ -1,6 +1,3 @@
-/**
- * Timeline component for rendering route segments
- */
 import { getLineColor } from '../lib/utils.js';
 
 export function renderTimeline(segments) {
@@ -10,81 +7,96 @@ export function renderTimeline(segments) {
     timeline.innerHTML = "";
 
     segments.forEach((segment, index) => {
-        const isLast = index === segments.length - 1;
+        const isLastSegment = index === segments.length - 1;
         const lineColor = getLineColor(segment.railway || "");
         
-        const segmentEl = document.createElement("div");
-        segmentEl.className = "relative";
+        // --- 1. Station Row (Start or Transfer) ---
+        const stationRow = document.createElement("div");
+        stationRow.className = "flex";
         
-        const departureTime = segment.departure_time || "--:--";
-        const trainInfo = segment.train_number 
-            ? `${segment.train_type} ${segment.train_number}` 
-            : segment.train_type || "";
-        
-        segmentEl.innerHTML = `
-            <div class="flex items-start gap-4">
-                <!-- Timeline dot and line -->
-                <div class="flex flex-col items-center">
-                    <div class="w-4 h-4 rounded-full ${lineColor} border-2 border-slate-800 shadow-lg z-10"></div>
-                    ${!isLast ? `<div class="w-0.5 h-20 bg-slate-600"></div>` : ''}
-                </div>
-                
-                <!-- Content -->
-                <div class="flex-1 pb-4">
-                    <div class="flex items-center gap-3 mb-2">
-                        <span class="text-2xl font-bold text-white">${departureTime}</span>
-                        <span class="text-lg text-slate-300">${segment.from}</span>
-                    </div>
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="text-sm px-2 py-1 rounded-lg ${lineColor} text-white font-medium">
-                            ${segment.railway}
-                        </span>
-                        ${trainInfo ? `<span class="text-xs text-slate-500">${trainInfo}</span>` : ''}
-                    </div>
-                    ${segment.note ? `
-                    <div class="text-sm text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2 mt-2">
-                        ⚠️ ${segment.note}
-                    </div>
-                    ` : ''}
-                    ${segment.arrival_time ? `
-                    <div class="text-sm text-slate-400 flex items-center gap-1 mt-1">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                        </svg>
-                        ${segment.arrival_time}着 ${segment.to}
-                    </div>
-                    ` : `
-                    <div class="text-sm text-slate-400 flex items-center gap-1">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                        </svg>
-                        ${segment.to} 方面
-                    </div>
-                    `}
-                </div>
-            </div>
-        `;
-        
-        timeline.appendChild(segmentEl);
-    });
+        // Left: Time
+        let timeHTML = "";
+        if (index === 0) {
+            // Start Station
+            timeHTML = `<div class="text-xl font-bold text-white">${segment.departure_time}</div>`;
+        } else {
+            // Transfer Station (Arrival of prev, Departure of curr)
+            const prevSeg = segments[index - 1];
+            timeHTML = `
+                <div class="text-sm text-slate-400 leading-tight">${prevSeg.arrival_time}着</div>
+                <div class="text-base font-bold text-white leading-tight">${segment.departure_time}発</div>
+            `;
+        }
 
-    // Add final destination marker with arrival time
-    if (segments.length > 0) {
-        const lastSegment = segments[segments.length - 1];
-        const finalTime = lastSegment.arrival_time || "";
-        
-        const finalEl = document.createElement("div");
-        finalEl.className = "flex items-center gap-4";
-        finalEl.innerHTML = `
-            <div class="w-4 h-4 rounded-full bg-rose-500 border-2 border-slate-800 shadow-lg"></div>
-            <div>
-                <div class="flex items-center gap-2">
-                    <span class="text-lg font-bold text-white">${lastSegment.to}</span>
-                    <span class="text-sm text-slate-400">到着</span>
-                </div>
-                ${finalTime ? `<div class="text-2xl font-bold text-white mt-1">${finalTime}</div>` : ''}
+        // Center: Icon (Start Badge or Circle)
+        let iconHTML = "";
+        if (index === 0) {
+            // Start "発" badge
+             iconHTML = `<div class="w-6 h-6 bg-slate-200 text-slate-900 rounded-sm font-bold text-xs flex items-center justify-center z-10">発</div>`;
+        } else {
+            // Transfer Circle
+            iconHTML = `<div class="w-4 h-4 bg-white border-2 border-slate-600 rounded-full z-10"></div>`;
+        }
+
+        stationRow.innerHTML = `
+            <div class="w-20 text-right pr-4 flex flex-col justify-center gap-0.5">
+                ${timeHTML}
+            </div>
+            <div class="w-8 flex flex-col items-center relative">
+                 ${iconHTML}
+                 <div class="w-1.5 ${lineColor} h-full absolute top-4 z-0"></div>
+            </div>
+            <div class="flex-1 pl-2 py-1 items-center flex">
+                <span class="text-lg font-bold text-white border-b border-slate-700/50 pb-1 w-full">${segment.from}</span>
             </div>
         `;
-        timeline.appendChild(finalEl);
-    }
+        timeline.appendChild(stationRow);
+
+        // --- 2. Travel Path Row ---
+        // Train Info
+        const trainInfo = segment.train_number 
+            ? `<span class="text-slate-400 text-sm ml-2">${segment.train_type} ${segment.train_number}</span>` 
+            : (segment.train_type ? `<span class="text-slate-400 text-sm ml-2">${segment.train_type}</span>` : "");
+            
+        const pathRow = document.createElement("div");
+        pathRow.className = "flex min-h-[4rem]";
+        
+        pathRow.innerHTML = `
+            <div class="w-20"></div> <!-- Time Spacer -->
+            <div class="w-8 flex flex-col items-center relative">
+                 <div class="w-1.5 ${lineColor} h-full absolute top-0 bottom-0 z-0"></div>
+            </div>
+            <div class="flex-1 pl-2 py-3 flex flex-col justify-center">
+                 <div class="flex items-center">
+                    <span class="text-2xl mr-2">🚃</span>
+                    <div>
+                        <div class="font-bold text-slate-200 text-sm">${segment.railway}</div>
+                        ${trainInfo}
+                    </div>
+                 </div>
+                 ${segment.note ? `<div class="text-xs text-amber-400 mt-1 ml-8">⚠️ ${segment.note}</div>` : ''}
+            </div>
+        `;
+        timeline.appendChild(pathRow);
+
+        // --- 3. Final Destination Row (Only for last segment) ---
+        if (isLastSegment) {
+            const endRow = document.createElement("div");
+            endRow.className = "flex";
+            
+            endRow.innerHTML = `
+                 <div class="w-20 text-right pr-4 flex flex-col justify-center">
+                    <div class="text-xl font-bold text-white">${segment.arrival_time}</div>
+                </div>
+                <div class="w-8 flex flex-col items-center relative">
+                     <div class="w-1.5 ${lineColor} h-3 absolute top-0 z-0"></div> <!-- Connect from above -->
+                     <div class="w-6 h-6 bg-slate-600 text-white rounded-sm font-bold text-xs flex items-center justify-center z-10 mt-2">着</div>
+                </div>
+                <div class="flex-1 pl-2 py-2 items-center flex">
+                    <span class="text-lg font-bold text-white border-b border-slate-700/50 pb-1 w-full">${segment.to}</span>
+                </div>
+            `;
+            timeline.appendChild(endRow);
+        }
+    });
 }
