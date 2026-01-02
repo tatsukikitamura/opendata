@@ -30,18 +30,39 @@ jobs:
           # Adjust path if script is in backend/scripts
           python backend/scripts/collect_delays.py
       
-      - name: Commit and Push if changes
+      - name: Fetch and Switch to Data Branch
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           
-          # Only commit if new file was created
+          # Fetch all branches
+          git fetch origin
+          
+          # Switch to data branch or create orphan if not exists
+          if git ls-remote --exit-code --heads origin data; then
+            git checkout data
+            git pull origin data
+          else
+            git checkout --orphan data
+            git rm -rf .
+            # Keep only the backend/data directory (if it existed) or Start fresh
+            # We want to keep the collected data files
+          fi
+          
+          # Restore the newly collected file which might be in the workspace but not in the data branch yet
+          # Note: When we switched branch, untracked files (the new jsonl) should stay in workplace
+          
+      - name: Commit and Push to Data Branch
+        run: |
+          # Add the data directory
+          # Ensure directory exists just in case
+          mkdir -p backend/data/delays
+          
           git add backend/data/delays/
           
-          # Check if there are changes to commit
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
             git commit -m "Add delay data $(date +%Y%m%d_%H%M)"
-            git push
+            git push origin data
           fi
