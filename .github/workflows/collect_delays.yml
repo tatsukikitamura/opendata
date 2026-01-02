@@ -21,7 +21,7 @@ jobs:
       
       - name: Install dependencies
         run: |
-          pip install requests gtfs-realtime-bindings python-dotenv
+          pip install requests gtfs-realtime-bindings python-dotenv tzdata
       
       - name: Fetch GTFS-RT and save
         env:

@@ -22,53 +22,49 @@ def fetch_gtfs_rt():
         print("Error: ODPT_ACCESS_TOKEN not set")
         return None
 
-    try:
-        url = f"{GTFS_RT_URL}?acl:consumerKey={ACCESS_TOKEN}"
-        print(f"Fetching: {url}")
-        
-        resp = requests.get(url)
-        resp.raise_for_status()
-        
-        # Parse GTFS-RT protobuf
-        feed = gtfs_realtime_pb2.FeedMessage()
-        feed.ParseFromString(resp.content)
-        
-        timestamp = datetime.datetime.now().isoformat()
-        cleaned_data = []
-        
-        for entity in feed.entity:
-            if not entity.HasField("trip_update"):
-                continue
-                
-            trip_update = entity.trip_update
-            trip = trip_update.trip
+    # Remove try-except to allow error to propagate and fail the action
+    url = f"{GTFS_RT_URL}?acl:consumerKey={ACCESS_TOKEN}"
+    print(f"Fetching: {url}")
+    
+    resp = requests.get(url)
+    resp.raise_for_status()
+    
+    # Parse GTFS-RT protobuf
+    feed = gtfs_realtime_pb2.FeedMessage()
+    feed.ParseFromString(resp.content)
+    
+    timestamp = datetime.datetime.now().isoformat()
+    cleaned_data = []
+    
+    for entity in feed.entity:
+        if not entity.HasField("trip_update"):
+            continue
             
-            # Extract max delay for this trip
-            max_delay = 0
-            for update in trip_update.stop_time_update:
-                delay = 0
-                if update.HasField("arrival") and update.arrival.HasField("delay"):
-                    delay = update.arrival.delay
-                elif update.HasField("departure") and update.departure.HasField("delay"):
-                    delay = update.departure.delay
-                
-                if delay > max_delay:
-                    max_delay = delay
+        trip_update = entity.trip_update
+        trip = trip_update.trip
+        
+        # Extract max delay for this trip
+        max_delay = 0
+        for update in trip_update.stop_time_update:
+            delay = 0
+            if update.HasField("arrival") and update.arrival.HasField("delay"):
+                delay = update.arrival.delay
+            elif update.HasField("departure") and update.departure.HasField("delay"):
+                delay = update.departure.delay
             
-            # Serialize protobuf objects to dict for JSON storage
-            cleaned_data.append({
-                "timestamp": timestamp,
-                "trip_id": trip.trip_id,
-                "route_id": trip.route_id,
-                "max_delay_seconds": max_delay,
-                "vehicle_id": trip_update.vehicle.id if trip_update.HasField("vehicle") else None
-            })
+            if delay > max_delay:
+                max_delay = delay
+        
+        # Serialize protobuf objects to dict for JSON storage
+        cleaned_data.append({
+            "timestamp": timestamp,
+            "trip_id": trip.trip_id,
+            "route_id": trip.route_id,
+            "max_delay_seconds": max_delay,
+            "vehicle_id": trip_update.vehicle.id if trip_update.HasField("vehicle") else None
+        })
 
-        return cleaned_data
-
-    except Exception as e:
-        print(f"Error fetching data: {e}")
-        return None
+    return cleaned_data
 
 
 # ... existing code ...
