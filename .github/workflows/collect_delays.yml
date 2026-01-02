@@ -32,57 +32,14 @@ jobs:
           # Adjust path if script is in backend/scripts
           python backend/scripts/collect_delays.py
           
-          # Move generated files to a temporary location to avoid conflict during checkout
-          # The script generates files in backend/data/delays/
-          mkdir -p ~/temp_delays
-          cp -r backend/data/delays/* ~/temp_delays/ || true
-          
-          # Clean up local changes so checkout works
-          git checkout .
-          git clean -fd
-      
-      - name: Fetch and Switch to Data Branch
+      - name: Commit and Push
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           
-          # Fetch all branches
-          git fetch origin
+          # Pull latest changes to avoid conflicts
+          git pull origin main
           
-          # Switch to data branch or create orphan if not exists
-          if git ls-remote --exit-code --heads origin data; then
-            git checkout data
-            git pull origin data
-          else
-            git checkout --orphan data
-            git rm -rf .
-            # Keep only the backend/data directory (if it existed) or Start fresh
-            # We want to keep the collected data files
-          fi
-          
-          # Restore the newly collected file from temp location
-          mkdir -p backend/data/delays
-          
-          # Loop through temp files and append or move
-          for file in ~/temp_delays/*.jsonl; do
-            [ -e "$file" ] || continue
-            filename=$(basename "$file")
-            target="backend/data/delays/$filename"
-            
-            if [ -f "$target" ]; then
-              # If target exists, append content (skipping duplicate lines handled by script logic ideally, or just raw append)
-              # The script produces unique lines per run, so appending is safe.
-              cat "$file" >> "$target"
-              echo "Appended data to existing $target"
-            else
-              # If target doesn't exist, move it there
-              mv "$file" "$target"
-              echo "Created new $target"
-            fi
-          done
-          
-      - name: Commit and Push to Data Branch
-        run: |
           # Add the data directory
           # Ensure directory exists just in case
           mkdir -p backend/data/delays
@@ -93,5 +50,5 @@ jobs:
             echo "No changes to commit"
           else
             git commit -m "Add delay data $(TZ='Asia/Tokyo' date +%Y%m%d_%H%M)"
-            git push origin data
+            git push origin main
           fi
