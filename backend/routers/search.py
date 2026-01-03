@@ -196,23 +196,13 @@ def search_multi_route_api(
     if len(time) == 4 and time.isdigit():
         search_time = f"{time[:2]}:{time[2:]}"
     
-    # Try different transfer buffer values
-    TRANSFER_BUFFERS = [0, 3, 5, 7, 10]
+    # Use iterative penalty method to find up to 3 distinct routes
     candidates = []
-    seen_paths = set()
     
-    for buffer in TRANSFER_BUFFERS:
-        # Get theoretical route
-        route_result = graph.find_route(from_station, to_station, transfer_buffer=buffer)
-        if "error" in route_result:
-            continue
-        
-        # Create path signature to detect duplicates
-        path_sig = tuple(route_result.get("path", []))
-        if path_sig in seen_paths:
-            continue
-        seen_paths.add(path_sig)
-        
+    # Find theoretical routes first
+    theoretical_routes = graph.find_routes(from_station, to_station, limit=3, transfer_buffer=5)
+    
+    for route_result in theoretical_routes:
         # Apply timetable
         timed_result = search_route_with_times(
             db, route_result, search_time, "Weekday",
@@ -229,10 +219,10 @@ def search_multi_route_api(
             if last_seg:
                 arrival = last_seg.get("arrival_time", "99:99")
                 timed_result["_arrival"] = arrival
-                timed_result["transfer_buffer_used"] = buffer
+                timed_result["transfer_buffer_used"] = 5
                 candidates.append(timed_result)
     
-    # Sort by arrival time and take top 3
+    # Sort by arrival time
     candidates.sort(key=lambda x: x.get("_arrival", "99:99"))
     top_routes = candidates[:3]
     

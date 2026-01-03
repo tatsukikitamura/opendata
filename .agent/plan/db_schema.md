@@ -85,3 +85,22 @@ erDiagram
 
 **特記ロジック**:
 - 山手線などの環状線は、インデックス差分と閾値を比較して時計回り/反時計回りを判定する。
+
+---
+
+### 4. `delay_logs` (遅延ログ)
+GTFS-RTから収集したリアルタイム遅延情報の履歴。
+`import_delays.py` により JSONL ファイルからインポートされる。
+
+| カラム | 型 | 説明 | 備考 |
+|---|---|---|---|
+| id | Integer | PK | |
+| timestamp | String | 取得日時 | ISO 8601 形式 (`YYYY-MM-DDTHH:MM:SS...`) |
+| trip_id | String | 列車ID | 末尾の文字で路線を判別可能 (例: `...T`=中央線快速) |
+| route_id | String | 路線ID | (GTFS上は空の場合が多い) |
+| max_delay | Integer | 最大遅延(秒) | |
+| vehicle_id | String | 車両ID | |
+
+**備考**:
+- `trip_id` のサフィックスを利用して路線ごとの遅延を集計・分析する。
+

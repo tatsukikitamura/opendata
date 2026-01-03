@@ -28,6 +28,18 @@ def get_arrival_time(
     
     if record:
         return record.departure_time
+
+    # Fallback: Try finding the train on ANY railway at this station
+    # (Fixes issue where train switches line name, e.g. Keiyo -> Musashino/ChuoSobu)
+    record = db.query(StationDeparture).filter(
+        StationDeparture.train_number == train_number,
+        StationDeparture.station_name.ilike(station_name),
+        StationDeparture.weekday_type == weekday
+    ).first()
+    
+    if record:
+        return record.departure_time
+        
     return None
 
 
@@ -135,6 +147,22 @@ def find_train_for_segment(
             # Normal check will handle it below (or above loop)
             pass
         
+        # Verify that this train actually stops at the destination station
+        # This prevents picking through-trains that skip intermediate stops on this railway (e.g. Metro through service)
+        # Handle station name variations (e.g. Nishi-Funabashi -> NishiFunabashi)
+        check_to_stations = [to_station]
+        if "-" in to_station:
+            check_to_stations.append(to_station.replace("-", ""))
+        
+        arrival_check = None
+        for ts in check_to_stations:
+            arrival_check = get_arrival_time(db, departure.train_number, departure.railway_name, ts, weekday)
+            if arrival_check:
+                break
+                
+        if not arrival_check:
+            continue
+
         return {
             "departure_time": departure.departure_time,
             "railway": departure.railway_name,

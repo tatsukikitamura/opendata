@@ -1,0 +1,45 @@
+============================================================
+Train Timetable Fetcher (Source: odpt:TrainTimetable)
+============================================================
+
+Clearing existing timetable data...
+
+Fetching train timetables from ODPT API...
+  ChuoRapid: 1089 trains, 19698 records
+  Yamanote: 1037 trains, 31377 records
+  ChuoSobuLocal: 1243 trains, 32279 records
+  SobuRapid: 654 trains, 5248 records
+  JobanRapid: 682 trains, 6316 records
+  JobanLocal: 562 trains, 6546 records
+  KeihinTohokuNegishi: 1255 trains, 37902 records
+  SaikyoKawagoe: 960 trains, 12679 records
+  ShonanShinjuku: 380 trains, 3882 records
+  Tokaido: 692 trains, 9697 records
+  Yokosuka: 751 trains, 7721 records
+  Takasaki: 450 trains, 8506 records
+  Utsunomiya: 607 trains, 9696 records
+  Musashino: 536 trains, 12686 records
+  Keiyo: 1133 trains, 11596 records
+  Nambu: 733 trains, 15612 records
+  Yokohama: 622 trains, 10827 records
+  Sotobo: 430 trains, 5011 records
+  Uchibo: 370 trains, 5042 records
+  Ginza: No data
+  Marunouchi: No data
+  Hibiya: No data
+  Tozai: No data
+  Chiyoda: No data
+  Yurakucho: No data
+  Hanzomon: No data
+  Namboku: No data
+  Fukutoshin: No data
+  Asakusa: No data
+  Mita: No data
+  Shinjuku: No data
+  Oedo: No data
+
+============================================================
+Total: 252321 records saved to database
+============================================================
+
+Done!

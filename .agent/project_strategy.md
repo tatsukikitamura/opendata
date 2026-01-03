@@ -28,9 +28,22 @@
      - 「ルート1は早いが（20分）、**高リスク**（遅延確率 80%）。」
      - 「ルート2は遅いが（25分）、**低リスク**（遅延確率 5%）。」
 
-## 4. 技術スタック
-- **フロントエンド**: Vite + Vanilla JS（プレミアムなデザイン重視）。
-- **バックエンド**: FastAPI (Python)。
-- **データ**:
-  - ODPT API: リアルタイムデータ & 静的マスターデータ。
-  - SQLite（プロトタイプ） -> PostgreSQL（本番）: 履歴ログの保存用。
+## 4. 技術スタック・バージョン (実績)
+
+### Frontend
+- **Framework**: Vite v7 + Vanilla JS (ESModules)
+- **Styling**: TailwindCSS **v4**
+  - `@tailwindcss/vite`: ^4.1.18
+  - `tailwindcss`: ^4.1.18
+- **Design**: Premium UI/UX (Glassmorphism, Dynamic Animations)
+
+### Backend
+- **Language**: Python 3.14
+- **Framework**: FastAPI (0.128.0)
+- **Database**:
+  - **ORM**: SQLAlchemy (2.0.45)
+  - **DB**: SQLite (Proto) / PostgreSQL (Future)
+- **Key Libraries**:
+  - `gtfs-realtime-bindings` (2.0.0): GTFS-RTデータ処理
+  - `apscheduler` / `GitHub Actions`: 定期実行インフラ
+- **データソース**: ODPT API (GTFS-RT & Static)

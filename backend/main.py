@@ -2,7 +2,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-
 from routers import search, timetable, stations
 from services.route_graph import initialize_graph
 from db.database import engine

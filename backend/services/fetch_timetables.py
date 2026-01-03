@@ -39,13 +39,47 @@ def fetch_train_timetables(railway_id: str):
         "acl:consumerKey": API_KEY
     }
     
-    try:
-        response = requests.get(url, params=params, timeout=60)
-        response.raise_for_status()
-        return response.json()
-    except Exception as e:
-        print(f"  Error fetching {railway_id}: {e}")
-        return []
+    all_trains = []
+    
+    # Split by calendar to avoid 1000 record limit per query
+    # ChuoSobuLocal and others exceed 1000 daily.
+    calendars = [
+        "odpt.Calendar:Weekday", 
+        "odpt.Calendar:Saturday", 
+        "odpt.Calendar:SundayHoliday",
+        "odpt.Calendar:SaturdayHoliday"
+    ]
+    
+    for cal in calendars:
+        params_cal = params.copy()
+        params_cal["odpt:calendar"] = cal
+        
+        try:
+            response = requests.get(url, params=params_cal, timeout=60)
+            if response.status_code == 200:
+                data = response.json()
+                if data:
+                    all_trains.extend(data)
+            else:
+                 # Some lines might not support calendar filtering or return 404/400?
+                 # Actually ODPT usually returns 200 [] or errors.
+                 pass
+        except Exception as e:
+            print(f"  Error fetching {railway_id} ({cal}): {e}")
+            
+    # Also try without calendar if we got nothing? 
+    # Or some lines don't use these specific calendars?
+    # Majority of JR East lines use Weekday/SaturdayHoliday or Weekday/Saturday/SundayHoliday
+    # If all_trains is empty, try fetch ALL (fallback)
+    if not all_trains:
+        try:
+             response = requests.get(url, params=params, timeout=60)
+             if response.status_code == 200:
+                 all_trains = response.json()
+        except Exception:
+            pass
+
+    return all_trains
 
 
 def parse_train_timetable(train_data: dict) -> list:
@@ -144,8 +178,9 @@ def main():
     session.commit()
     
     # Railways to fetch (from shared constants)
-    from services.constants import JR_EAST_RAILWAYS
-    railways = JR_EAST_RAILWAYS
+    # Railways to fetch (from shared constants)
+    from services.constants import ALL_RAILWAYS
+    railways = ALL_RAILWAYS
     
     total_records = 0
     

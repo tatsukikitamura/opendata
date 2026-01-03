@@ -27,6 +27,8 @@ JR_EAST_RAILWAYS = [
     "odpt.Railway:JR-East.Keiyo",
     "odpt.Railway:JR-East.Nambu",
     "odpt.Railway:JR-East.Yokohama",
+    "odpt.Railway:JR-East.Sotobo",
+    "odpt.Railway:JR-East.Uchibo",
 ]
 
 # Tokyo Metro Railways
@@ -77,6 +79,21 @@ RAILWAY_JA_TO_EN = {
     "京葉線": "Keiyo",
     "南武線": "Nambu",
     "横浜線": "Yokohama",
+    "銀座線": "Ginza",
+    "丸ノ内線": "Marunouchi",
+    "日比谷線": "Hibiya",
+    "東西線": "Tozai",
+    "千代田線": "Chiyoda",
+    "有楽町線": "Yurakucho",
+    "半蔵門線": "Hanzomon",
+    "南北線": "Namboku",
+    "副都心線": "Fukutoshin",
+    "浅草線": "Asakusa",
+    "三田線": "Mita",
+    "新宿線": "Shinjuku",
+    "大江戸線": "Oedo",
+    "外房線": "Sotobo",
+    "内房線": "Uchibo",
 }
 
 # English to Japanese railway name mapping

@@ -81,7 +81,11 @@ def get_route_risk(route: dict, departure_time: str) -> dict:
         railways_checked = set()
         segments = route.get("segments", [])
         
+        from zoneinfo import ZoneInfo
+        jst = ZoneInfo("Asia/Tokyo")
+
         for segment in segments:
+            # ... (railway normalization logic skipped for brevity if unchanged, but need to be careful with replace) ...
             railway = segment.get("railway")
             if not railway:
                 continue
@@ -101,50 +105,61 @@ def get_route_risk(route: dict, departure_time: str) -> dict:
             suffix = RAILWAY_TO_ROUTE_CODE.get(railway_short)
             
             if not suffix:
-                # If we can't identify the line suffix, skip specific check
                 continue
 
-            # Fetch records for this specific line (trip_id ends with suffix)
+            # Fetch ALL records for this line
             query = select(DelayLog).where(
-                and_(
-                     DelayLog.trip_id.like(f"%{suffix}"),
-                     DelayLog.max_delay > 0
-                )
+                DelayLog.trip_id.like(f"%{suffix}")
             )
             logs = db.execute(query).scalars().all()
             
+            line_total_count = 0
             line_delay_count = 0
             line_details = []
             
             for log in logs:
                 try:
-                    log_dt = datetime.fromisoformat(log.timestamp)
-                    if log_dt.hour in hours_to_check:
-                        line_delay_count += 1
-                        line_details.append({
-                            "timestamp": log_dt.strftime("%H:%M:%S"), # Just time part
-                            "delay_min": log.max_delay // 60
-                        })
-                except:
+                    # Treat stored timestamp as UTC (naive) and convert to JST
+                    # Stored format: "2026-01-03T08:00:00.123456" (UTC)
+                    dt_utc = datetime.fromisoformat(log.timestamp)
+                    # If naive, assume UTC (since GitHub Actions runs in UTC)
+                    if dt_utc.tzinfo is None:
+                        dt_utc = dt_utc.replace(tzinfo=ZoneInfo("UTC"))
+                    
+                    dt_jst = dt_utc.astimezone(jst)
+                    
+                    if dt_jst.hour in hours_to_check:
+                        line_total_count += 1
+                        
+                        if log.max_delay > 0:
+                            line_delay_count += 1
+                            line_details.append({
+                                "timestamp": dt_jst.strftime("%H:%M:%S"),
+                                "delay_min": log.max_delay // 60
+                            })
+                except Exception as e:
+                    # print(f"Error parsing timestamp: {e}")
                     continue
             
-            if line_delay_count > 0:
-                total_risk += line_delay_count
-                max_level = max(max_level, 2)
-                
-                # Sort by time
-                line_details.sort(key=lambda x: x["timestamp"])
-                
-                # Format specific details
-                detail_strs = [f"{d['timestamp']} (約{d['delay_min']}分)" for d in line_details[:3]] # Limit to 3 samples
-                if len(line_details) > 3:
-                     detail_strs.append("...")
-                     
-                reasons.append(f"{railway_short}: {line_delay_count}件の遅延実績 [{', '.join(detail_strs)}]")
-                
-                # Also store raw details if needed by frontend (requires schema change? 
-                # or just packing into extra field. Let's keep 'reasons' as string for now for compatibility, 
-                # but maybe add 'delay_events' list)
+            # Add reason if there is any data
+            if line_total_count > 0:
+                if line_delay_count > 0:
+                    total_risk += line_delay_count
+                    max_level = max(max_level, 2)
+                    
+                    # Sort by time
+                    line_details.sort(key=lambda x: x["timestamp"])
+                    
+                    # Format specific details
+                    detail_strs = [f"{d['timestamp']} (約{d['delay_min']}分)" for d in line_details[:3]]
+                    if len(line_details) > 3:
+                         detail_strs.append("...")
+                         
+                    rate_pct = (line_delay_count / line_total_count) * 100
+                    reasons.append(f"{railway_short}: {line_delay_count}/{line_total_count}件の遅延 ({rate_pct:.1f}%) [{', '.join(detail_strs)}]")
+                else:
+                    # No delays found but we have checks
+                    reasons.append(f"{railway_short}: 0/{line_total_count}件の遅延 (0.0%) [平常運行]")
                 
         level = "LOW"
         if max_level > 0:

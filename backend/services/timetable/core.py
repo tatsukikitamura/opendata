@@ -70,8 +70,8 @@ def search_route_with_times(
                 weekday
             )
             
-            # Default to 15 mins if arrival time not found (fallback)
-            travel_time_minutes = 15
+            # Default to theoretical time from graph if arrival time not found
+            travel_time_minutes = int(segment.get("theoretical_time", 15))
             if arrival_time:
                 dep_min = time_to_minutes(train["departure_time"])
                 arr_min = time_to_minutes(arrival_time)
@@ -111,7 +111,7 @@ def search_route_with_times(
             if is_late_night:
                 note = f"終電後の可能性があります ({current_time}以降)"
             else:
-                note = f"時刻表データなし (検索: {from_station_en})"
+                note = f"目安時間 (直通列車等が特定できませんでした)"
             
             timed_segments.append({
                 "from": from_station_ja,

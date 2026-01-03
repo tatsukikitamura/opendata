@@ -187,18 +187,29 @@ function renderDelayWarnings(route) {
     }
 
     // 1. Predictive Risk
-    if (risk.level !== 'LOW' && risk.reasons.length > 0) {
+    if (risk.reasons.length > 0) {
         hasContent = true;
-        const colorClass = risk.level === 'HIGH' 
-            ? "bg-red-500/10 border-red-500/50 text-red-100" 
-            : "bg-amber-500/10 border-amber-500/50 text-amber-100";
+        
+        let colorClass = "bg-emerald-500/10 border-emerald-500/50 text-emerald-100";
+        let icon = "✅";
+        let levelText = "低い";
+        
+        if (risk.level === 'HIGH') {
+            colorClass = "bg-red-500/10 border-red-500/50 text-red-100";
+            icon = "⚠️";
+            levelText = "高い";
+        } else if (risk.level === 'MEDIUM') {
+            colorClass = "bg-amber-500/10 border-amber-500/50 text-amber-100";
+            icon = "⚠️";
+            levelText = "中程度";
+        }
             
         const el = document.createElement("div");
         el.className = `${colorClass} border rounded-xl p-4 mb-2`;
         el.innerHTML = `
             <div class="flex items-center gap-2 mb-3">
-                <span class="text-2xl">⚠️</span>
-                <span class="font-bold text-lg">遅延リスク: ${risk.level === 'HIGH' ? '高い' : '中程度'}</span>
+                <span class="text-2xl">${icon}</span>
+                <span class="font-bold text-lg">遅延リスク: ${levelText}</span>
             </div>
             <div class="bg-black/20 rounded-lg p-3">
                 <p class="text-xs opacity-70 mb-2">過去の遅延実績データ:</p>

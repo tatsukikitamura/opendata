@@ -36,8 +36,15 @@ opendata/
 │   │       ├── core.py      # コア探索ロジック
 │   │       ├── finder.py    # 列車検索ロジック
 │   │       ├── direction.py # 方向判定ロジック
-│   │       └── utils.py     # 時間ユーティリティ
-│   └── data.db              # SQLiteデータベース
+│   │       ├── utils.py     # 時間ユーティリティ
+│   ├── scripts/
+│   │   ├── collect_delays.py # GTFS-RT収集
+│   │   ├── import_delays.py  # DBインポート
+│   │   ├── show_delay_rate.py # 遅延率分析
+│   │   └── ...
+│   ├── data/
+│   │   └── delays/          # 収集したJSONLデータ
+│   ├── data.db              # SQLiteデータベース
 │
 ├── frontend/
 │   ├── index.html           # 検索ページエントリ
