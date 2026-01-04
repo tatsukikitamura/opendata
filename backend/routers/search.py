@@ -9,6 +9,7 @@ from services.route_graph import get_graph
 from services.timetable.core import search_route_with_times
 from services.delay_service import check_route_delay, get_delay_summary
 from services.risk_service import get_route_risk
+from services.venue_service import get_venue_warnings
 from datetime import datetime
 
 import json
@@ -252,6 +253,9 @@ def search_multi_route_api(
         
         # Add Crowd Metrics
         route["crowd"] = get_crowd_metrics(route.get("segments", []))
+        
+        # Add Venue Warnings
+        route["venue_warnings"] = get_venue_warnings(route.get("segments", []))
 
     
     return {"routes": top_routes, "total_found": len(candidates)}

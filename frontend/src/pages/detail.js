@@ -166,10 +166,47 @@ function renderDelayWarnings(route) {
     const realTimeWarnings = route.delay_warnings || [];
     const risk = route.risk || { level: 'LOW', reasons: [] };
     const crowd = route.crowd || { level: 'UNKNOWN', score: 0, details: [] };
+    const venueWarnings = route.venue_warnings || { transfer_warnings: [], passing_info: [] };
     
     let hasContent = false;
 
-    // 0. Crowd Info
+    // 0. Venue Transfer Warnings (⚠️ 目立つ)
+    if (venueWarnings.transfer_warnings.length > 0) {
+        hasContent = true;
+        const el = document.createElement("div");
+        el.className = "bg-orange-500/20 border border-orange-500/50 rounded-xl p-4 mb-2";
+        el.innerHTML = `
+            <div class="flex items-center gap-2 mb-3">
+                <span class="text-2xl">🎪</span>
+                <span class="font-bold text-orange-200">イベント会場の最寄り駅を通ります</span>
+            </div>
+            <div class="space-y-2">
+                ${venueWarnings.transfer_warnings.map(w => `
+                    <div class="bg-black/20 rounded-lg p-3">
+                        <p class="font-medium text-orange-100">📍 ${w.station}駅 → ${w.venue}</p>
+                        <p class="text-xs text-slate-400 mt-1">収容人数: ${w.capacity.toLocaleString()}人 / ${w.note}</p>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        container.appendChild(el);
+    }
+
+    // 0.5 Venue Passing Info (ℹ️ 控えめ)
+    if (venueWarnings.passing_info.length > 0) {
+        hasContent = true;
+        const el = document.createElement("div");
+        el.className = "bg-slate-700/30 border border-slate-600/50 rounded-xl p-3 mb-2";
+        el.innerHTML = `
+            <div class="flex items-center gap-2">
+                <span class="text-lg">ℹ️</span>
+                <span class="text-sm text-slate-300">通過駅周辺の会場: ${venueWarnings.passing_info.map(p => `${p.station}(${p.venues.join(', ')})`).join(' / ')}</span>
+            </div>
+        `;
+        container.appendChild(el);
+    }
+
+    // 1. Crowd Info
     if (crowd.level !== 'UNKNOWN') {
         hasContent = true;
         const crowdEl = document.createElement("div");
@@ -186,7 +223,7 @@ function renderDelayWarnings(route) {
         container.appendChild(crowdEl);
     }
 
-    // 1. Predictive Risk
+    // 2. Predictive Risk
     if (risk.reasons.length > 0) {
         hasContent = true;
         
@@ -221,7 +258,7 @@ function renderDelayWarnings(route) {
         container.appendChild(el);
     }
 
-    // 2. Real-time Warnings
+    // 3. Real-time Warnings
     realTimeWarnings.forEach(warning => {
         hasContent = true;
         const el = document.createElement("div");
