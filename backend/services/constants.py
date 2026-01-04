@@ -94,6 +94,9 @@ RAILWAY_JA_TO_EN = {
     "大江戸線": "Oedo",
     "外房線": "Sotobo",
     "内房線": "Uchibo",
+    "総武本線": "Sobu",
+    "成田線": "Narita",
+    "成田線我孫子支線": "NaritaAbikoBranch",
 }
 
 # English to Japanese railway name mapping

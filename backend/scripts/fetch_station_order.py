@@ -14,7 +14,11 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-load_dotenv(dotenv_path="../.env")
+
+# Load .env from project root
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+load_dotenv(os.path.join(BASE_DIR, ".env"))
+
 
 API_KEY = os.getenv("ODPT_ACCESS_TOKEN")
 BASE_URL = "https://api-challenge.odpt.org/api/v4"
@@ -51,6 +55,44 @@ def fetch_railway_data(railway_id: str) -> dict:
         return {}
 
 
+
+
+def fetch_all_railways(operator="odpt.Operator:JR-East"):
+    """Fetch all railways for a specific operator."""
+    url = f"{BASE_URL}/odpt:Railway"
+    params = {
+        #"odpt:operator": operator, # Filter might not work on API side
+        "acl:consumerKey": API_KEY
+    }
+    
+    try:
+        response = requests.get(url, params=params, timeout=60)
+        if response.status_code == 200:
+            data = response.json()
+
+            # Filter in python
+            railways = []
+            for r in data:
+                # Use owl:sameAs as primary ID
+                rid = r.get("owl:sameAs") or r.get("odpt:railway")
+                op = r.get("odpt:operator", "")
+                
+                if not rid:
+                    continue
+
+                if operator in op or "JR-East" in rid:
+                     railways.append(rid)
+            
+            railways = [r for r in railways if "Shinkansen" not in r]
+            return sorted(list(set(railways)))
+        else:
+            print(f"Error fetching railways: {response.status_code}")
+            return []
+    except Exception as e:
+        print(f"Error fetching railways: {e}")
+        return []
+
+
 def main():
     if not API_KEY:
         print("ERROR: ODPT_ACCESS_TOKEN not set in .env file")
@@ -68,9 +110,30 @@ def main():
     session.query(StationOrder).delete()
     session.commit()
     
-    # Railways to fetch (from shared constants)
-    from services.constants import JR_EAST_RAILWAYS
-    railways = JR_EAST_RAILWAYS
+
+    # Fetch railways dynamically
+    print("\nFetching railway list from API...")
+    target_operators = [
+        "odpt.Operator:JR-East",
+        "odpt.Operator:TokyoMetro",
+        "odpt.Operator:Toei"
+    ]
+    
+    railways = []
+    for op in target_operators:
+        print(f"  Fetching {op}...")
+        op_railways = fetch_all_railways(op)
+        railways.extend(op_railways)
+        print(f"    -> Found {len(op_railways)} lines")
+    
+    # Dedup and sort
+    railways = sorted(list(set(railways)))
+    
+    if not railways:
+        print("No railways found. Exiting.")
+        return
+        
+    print(f"Total Target Railways: {len(railways)} lines")
     
     total_stations = 0
     

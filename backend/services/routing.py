@@ -345,25 +345,68 @@ class RouteGraph:
 
         return {"error": "No route found"}
 
-    def find_routes(self, from_query: str, to_query: str, limit: int = 3, transfer_buffer: int = 5) -> list:
-        """Find multiple distinct routes using iterative penalty method."""
+    def find_routes(self, from_query: str, to_query: str, limit: int = 5) -> list:
+        """
+        Find up to 'limit' diverse routes using Hybrid Strategy:
+        1. Variable Transfer Buffer: [0, 5, 20] minutes
+        2. Penalty Method: If < limit routes, penalize existing paths and retry.
+        """
         routes = []
-        penalty_edges = set()
         seen_paths = set()
         
-        for _ in range(limit * 2): # Try more times than limit to find valid distinct routes
+        # Step 1: Variable Transfer Buffer Strategy
+        # 0: Fastest (accept transfers)
+        # 5: Balanced (standard)
+        # 20: Minimum transfers (1 transfer = 20min penalty)
+        buffers = [0, 5, 20]
+        
+        for buf in buffers:
             if len(routes) >= limit:
                 break
                 
-            result = self.find_route(from_query, to_query, transfer_buffer, penalty_edges)
+            # No penalties for this phase, just varying buffer
+            result = self.find_route(from_query, to_query, transfer_buffer=buf, penalty_edges=set())
+            
             if "error" in result:
+                continue
+                
+            path_ids = tuple(result.get("path_ids", []))
+            if not path_ids or path_ids in seen_paths:
+                continue
+                
+            seen_paths.add(path_ids)
+            routes.append(result)
+
+        # Step 2: Penalty Method (Fill remaining slots)
+        # If we still need routes, use penalty method on top of standard buffer (5min)
+        penalty_edges = set()
+        
+        # Initialize penalties with paths found so far
+        for r in routes:
+            path_list = r.get("path_ids", [])
+            for i in range(len(path_list) - 1):
+                u, v = path_list[i], path_list[i+1]
+                penalty_edges.add((u, v))
+                penalty_edges.add((v, u))
+
+        # Try to find more routes until we hit the limit
+        # We allow up to known retries to find distinct paths
+        extra_attempts = (limit - len(routes)) * 2
+        
+        for _ in range(extra_attempts):
+            if len(routes) >= limit:
                 break
                 
+            result = self.find_route(from_query, to_query, transfer_buffer=5, penalty_edges=penalty_edges)
+            
+            if "error" in result:
+                break
+            
             path_ids = tuple(result.get("path_ids", []))
             
             if not path_ids or path_ids in seen_paths:
-                # If we found duplicates despite penalties, maybe we are stuck.
-                # Force penalize this duplicate path again to push it further down
+                # If we found duplicates despite penalties, force penalize this path heavily
+                # (Existing logic handles this somewhat by accumulating penalties, but let's be explicit)
                 path_list = result.get("path_ids", [])
                 for i in range(len(path_list) - 1):
                     u, v = path_list[i], path_list[i+1]
@@ -373,13 +416,16 @@ class RouteGraph:
             else:
                 seen_paths.add(path_ids)
                 routes.append(result)
-            
-            # Penalize edges in this path for next iteration
-            path_list = result.get("path_ids", [])
-            for i in range(len(path_list) - 1):
-                u, v = path_list[i], path_list[i+1]
-                penalty_edges.add((u, v))
-                penalty_edges.add((v, u))
+                
+                # Add this new path to penalties for next iteration
+                path_list = result.get("path_ids", [])
+                for i in range(len(path_list) - 1):
+                    u, v = path_list[i], path_list[i+1]
+                    penalty_edges.add((u, v))
+                    penalty_edges.add((v, u))
+        
+        # Sort routes by total time (theoretical)
+        routes.sort(key=lambda x: x.get("theoretical_time", float("inf")))
         
         return routes
 

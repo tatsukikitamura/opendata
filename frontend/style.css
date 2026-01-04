@@ -1,7 +1,11 @@
 @import "tailwindcss";
 
 body {
-  font-family: 'Sora', 'Noto Sans JP', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 
+    "Hiragino Kaku Gothic ProN", "Hiragino Sans", 
+    "Noto Sans JP", Meiryo, sans-serif;
+  font-feature-settings: "palt";
+  -webkit-font-smoothing: antialiased;
 }
 
 code, pre, .font-mono {

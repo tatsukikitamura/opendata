@@ -14,7 +14,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from db.models import Base, StationInterval
 
-load_dotenv(dotenv_path="../.env")
+
+# Load .env from project root
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+load_dotenv(os.path.join(BASE_DIR, ".env"))
+
 
 API_KEY = os.getenv("ODPT_ACCESS_TOKEN")
 BASE_URL = "https://api-challenge.odpt.org/api/v4"
@@ -29,15 +33,72 @@ def get_db_session():
     return Session()
 
 
+
+
+def fetch_all_railways(operator="odpt.Operator:JR-East"):
+    """Fetch all railways for a specific operator."""
+    url = f"{BASE_URL}/odpt:Railway"
+    params = {
+        #"odpt:operator": operator, # Filter might not work on API side
+        "acl:consumerKey": API_KEY
+    }
+    
+    try:
+        response = requests.get(url, params=params, timeout=60)
+        if response.status_code == 200:
+            data = response.json()
+
+            # Filter in python
+            railways = []
+            for r in data:
+                # Use owl:sameAs as primary ID
+                rid = r.get("owl:sameAs") or r.get("odpt:railway")
+                op = r.get("odpt:operator", "")
+                
+                if not rid: 
+                    continue
+
+                if operator in op or "JR-East" in rid:
+                     railways.append(rid)
+            
+            railways = [r for r in railways if "Shinkansen" not in r]
+            return sorted(list(set(railways)))
+        else:
+            print(f"Error fetching railways: {response.status_code}")
+            return []
+    except Exception as e:
+        print(f"Error fetching railways: {e}")
+        return []
+
+
 def fetch_train_timetables():
     """Fetch all JR-East train timetables from ODPT API."""
     print("Fetching train timetables from ODPT API...")
     
     all_timetables = []
     
-    # Import railways from shared constants
-    from services.constants import ALL_RAILWAYS
-    all_railways = ALL_RAILWAYS
+
+    # Import railways dynamically
+    target_operators = [
+        "odpt.Operator:JR-East",
+        "odpt.Operator:TokyoMetro",
+        "odpt.Operator:Toei"
+    ]
+    
+    all_railways = []
+    for op in target_operators:
+        print(f"  Fetching railway list for {op}...")
+        op_railways = fetch_all_railways(op)
+        all_railways.extend(op_railways)
+    
+    # Dedup
+    all_railways = sorted(list(set(all_railways)))
+    
+    if not all_railways:
+        print("No railways found.")
+        return []
+
+    print(f"Total Target Railways: {len(all_railways)} lines")
     
     for railway in all_railways:
         try:
@@ -46,6 +107,22 @@ def fetch_train_timetables():
                 "odpt:railway": railway,
                 "acl:consumerKey": API_KEY
             }
+            # Limit to Weekday to save time? Or fetch all?
+            # extract_travel_times is for EDGE WEIGHTS (average). 
+            # A single calendar is enough for average.
+            # But earlier logic fetched EVERYTHING for storage. 
+            # extract usually fetches again? No, it used requests.
+            # Wait, fetch_timetables.py STORES to DB.
+            # extract_travel_times.py FETCHES AGAIN?
+            # Yes, line 32: def fetch_train_timetables().
+            # It seems extract_travel_times fetches independently. It doesn't use DB.
+            # Optimally, it SHOULD use DB or utilize the fact that we just fetched them.
+            # But reusing the code is safer to avoid rewriting logic.
+            # I will just update the list.
+            
+            # Optimization: Just fetch Weekday for edge weights.
+            params["odpt:calendar"] = "odpt.Calendar:Weekday"
+            
             response = requests.get(url, params=params, timeout=60)
             response.raise_for_status()
             data = response.json()
@@ -87,6 +164,9 @@ def extract_travel_times(timetables):
             t1_str = s1.get("odpt:departureTime") or s1.get("odpt:arrivalTime")
             t2_str = s2.get("odpt:arrivalTime") or s2.get("odpt:departureTime") # Use arrival at next station
             
+            if not t1_str or not t2_str:
+                continue
+
             t1 = parse_time(t1_str)
             t2 = parse_time(t2_str)
             

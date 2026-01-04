@@ -150,18 +150,22 @@ def find_train_for_segment(
         # Verify that this train actually stops at the destination station
         # This prevents picking through-trains that skip intermediate stops on this railway (e.g. Metro through service)
         # Handle station name variations (e.g. Nishi-Funabashi -> NishiFunabashi)
-        check_to_stations = [to_station]
+        check_to_stations = [to_station.lower()]
         if "-" in to_station:
-            check_to_stations.append(to_station.replace("-", ""))
+            check_to_stations.append(to_station.replace("-", "").lower())
         
         arrival_check = None
         for ts in check_to_stations:
             arrival_check = get_arrival_time(db, departure.train_number, departure.railway_name, ts, weekday)
             if arrival_check:
                 break
-                
+        
+        # If no arrival record found, check if destination station matches target
+        # (Terminal stations don't have departure records, only arrival)
         if not arrival_check:
-            continue
+            train_dest = (departure.destination_station or "").lower()
+            if train_dest not in check_to_stations:
+                continue
 
         return {
             "departure_time": departure.departure_time,

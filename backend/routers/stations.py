@@ -3,7 +3,7 @@
 Stations and Railways API router.
 """
 from fastapi import APIRouter
-from services.route_graph import get_graph
+from services.routing import get_graph
 
 router = APIRouter()
 

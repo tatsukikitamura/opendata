@@ -1,4 +1,4 @@
-import { searchMultiRoute } from '../lib/api.js';
+import { searchRoute } from '../lib/api.js';
 import { showError, formatDuration } from '../lib/utils.js';
 import { renderTimeline } from '../components/Timeline.js';
 
@@ -31,7 +31,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 async function executeSearch(from, to, time) {
     try {
-        const data = await searchMultiRoute(from, to, time);
+        const data = await searchRoute(from, to, time);
 
         if (!data.routes || data.routes.length === 0) {
             showError("ルートが見つかりませんでした。");
@@ -70,7 +70,7 @@ function renderRouteList() {
     
     allRoutes.forEach((route, index) => {
         const segments = route.segments || [];
-        const firstDeparture = segments.length > 0 ? segments[0].departure_time : "--:--";
+        const firstDeparture = (segments.length > 0 && segments[0].departure_time) ? segments[0].departure_time : "--:--";
         const lastSeg = segments.length > 0 ? segments[segments.length - 1] : null;
         const arrival = lastSeg?.arrival_time || "--:--";
         const transfers = route.transfers || 0;
@@ -113,6 +113,31 @@ function renderRouteList() {
                 <div class="flex items-center gap-4 text-sm text-slate-400 mt-2">
                     <span>乗換 ${transfers}回</span>
                     <span class="text-xs border border-slate-600 px-2 py-0.5 rounded-full">${crowdIcon}</span>
+                </div>
+                
+                <!-- 3-Axis Scores -->
+                <div class="mt-3 text-xs space-y-1 w-48">
+                    <div class="flex items-center gap-2">
+                        <span class="w-8 text-slate-400">速さ</span>
+                        <div class="flex-1 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                            <div class="h-full bg-blue-500" style="width: ${(route.scores?.speed || 0) * 20}%"></div>
+                        </div>
+                        <span class="w-6 text-right font-mono">${(route.scores?.speed || 0).toFixed(1)}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-8 text-slate-400">快適</span>
+                        <div class="flex-1 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                            <div class="h-full bg-emerald-500" style="width: ${(route.scores?.comfort || 0) * 20}%"></div>
+                        </div>
+                        <span class="w-6 text-right font-mono">${(route.scores?.comfort || 0).toFixed(1)}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-8 text-slate-400">安定</span>
+                        <div class="flex-1 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                            <div class="h-full bg-purple-500" style="width: ${(route.scores?.reliability || 0) * 20}%"></div>
+                        </div>
+                        <span class="w-6 text-right font-mono">${(route.scores?.reliability || 0).toFixed(1)}</span>
+                    </div>
                 </div>
             </div>
             <div class="text-right">
@@ -258,7 +283,6 @@ function renderDelayWarnings(route) {
         container.appendChild(el);
     }
 
-    // 3. Real-time Warnings
     realTimeWarnings.forEach(warning => {
         hasContent = true;
         const el = document.createElement("div");
@@ -273,9 +297,11 @@ function renderDelayWarnings(route) {
         container.appendChild(el);
     });
     
-    if (hasContent) {
-        container.classList.remove("hidden");
-    } else {
-        container.classList.add("hidden");
+    // If no content, show a placeholder message
+    if (!hasContent) {
+        const el = document.createElement("div");
+        el.className = "text-slate-500 text-sm text-center py-4";
+        el.innerHTML = `<p>この路線は現在平常運行中です</p>`;
+        container.appendChild(el);
     }
 }

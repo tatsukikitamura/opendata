@@ -5,11 +5,12 @@ Search API router.
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from db.database import get_db
-from services.route_graph import get_graph
+from services.routing import get_graph
 from services.timetable.core import search_route_with_times
-from services.delay_service import check_route_delay, get_delay_summary
-from services.risk_service import get_route_risk
-from services.venue_service import get_venue_warnings
+from services.delay import check_route_delay, get_delay_summary
+from services.risk import get_route_risk
+from services.venue import get_venue_warnings
+from services.score import calculate_route_scores
 from datetime import datetime
 
 import json
@@ -80,96 +81,10 @@ def get_crowd_metrics(route_segments):
     }
 
 
+
+
 @router.get("/search")
 def search_route_api(
-    from_station: str = Query(..., description="Departure station"),
-    to_station: str = Query(..., description="Arrival station"),
-    transfer_buffer: int = Query(0, description="Additional time for transfers (minutes)")
-):
-    """
-    Find best route (shortest time) using graph search (Dijkstra).
-    This returns theoretical route without actual train times.
-    """
-    graph = get_graph()
-    result = graph.find_route(from_station, to_station, transfer_buffer=transfer_buffer)
-    return result
-
-
-@router.get("/search_with_times")
-def search_route_with_times_api(
-    from_station: str = Query(..., description="Departure station"),
-    to_station: str = Query(..., description="Arrival station"),
-    time: str = Query(..., description="Departure time (HH:MM)"),
-    type: str = Query("departure", description="Search type (departure/arrival)"),
-    transfer_buffer: int = Query(0, description="Additional time for transfers in graph search (minutes)"),
-    db: Session = Depends(get_db)
-):
-    """
-    Find best route and map it to actual train timetable.
-    """
-    graph = get_graph()
-    
-    # 1. Find best route structure (railways and transfer stations)
-    route_result = graph.find_route(from_station, to_station, transfer_buffer=transfer_buffer)
-    
-    station_map = {}
-    if hasattr(graph, "station_info"):
-        for station_id, info in graph.station_info.items():
-            name_ja = info.get("name_ja", "")
-            name_en = info.get("name_en", "")
-            if name_ja and name_en:
-                station_map[name_ja] = name_en
-            # Also map English to English for consistency
-            if name_en:
-                station_map[name_en] = name_en
-    
-    # 3. Find actual trains for each segment
-    weekday_type = "Weekday"  # Default to weekday for now
-    
-    # Ensure time is in HH:MM format
-    if len(time) == 4 and time.isdigit():
-        time = f"{time[:2]}:{time[2:]}"
-        
-    result = search_route_with_times(
-        db, 
-        route_result, 
-        time, 
-        weekday_type, 
-        transfer_buffer=5,
-        station_name_map=station_map
-    )
-    
-    # 4. Check for delays on routes used
-    delay_warnings = []
-    segments = result.get("segments", [])
-    checked_railways = set()
-    
-    for segment in segments:
-        railway = segment.get("railway", "")
-        if railway and railway not in checked_railways:
-            checked_railways.add(railway)
-            delay_sec = check_route_delay(railway)
-            if delay_sec:
-                delay_warnings.append({
-                    "railway": railway,
-                    "delay_seconds": delay_sec,
-                    "delay_minutes": delay_sec // 60,
-                    "message": f"{railway}: 約{delay_sec // 60}分の遅延"
-                })
-    
-    result["delay_warnings"] = delay_warnings
-    
-    return result
-
-
-@router.get("/delays")
-def get_delays_api():
-    """Get current delay summary for all routes."""
-    return get_delay_summary()
-
-
-@router.get("/search_multi")
-def search_multi_route_api(
     from_station: str = Query(..., description="Departure station"),
     to_station: str = Query(..., description="Arrival station"),
     time: str = Query(..., description="Departure time (HH:MM)"),
@@ -197,35 +112,54 @@ def search_multi_route_api(
     if len(time) == 4 and time.isdigit():
         search_time = f"{time[:2]}:{time[2:]}"
     
-    # Use iterative penalty method to find up to 3 distinct routes
+    # Use iterative penalty method to find up to 5 distinct routes
     candidates = []
     
     # Find theoretical routes first
-    theoretical_routes = graph.find_routes(from_station, to_station, limit=3, transfer_buffer=5)
+    # limit=5, logic is now internal to find_routes (Buffer Variation + Penalty)
+    theoretical_routes = graph.find_routes(from_station, to_station, limit=5)
     
+    # Determine weekday type
+    now = datetime.now()
+    if now.weekday() >= 6: # Sunday (0=Mon, 6=Sun)
+        # Check for Holiday calendar logic? 
+        # Python weekday: Mon=0 ... Sun=6
+        # Usually Sat=5, Sun=6.
+        weekday_type = "Holiday"
+    elif now.weekday() == 5: # Saturday
+        weekday_type = "Saturday"
+    else:
+        # Check for national holidays? (Advanced)
+        # For now, simplistic Weekday.
+        weekday_type = "Weekday"
+        
     for route_result in theoretical_routes:
         # Apply timetable
         timed_result = search_route_with_times(
-            db, route_result, search_time, "Weekday",
+            db, route_result, search_time, weekday_type,
             transfer_buffer=5, station_name_map=station_map
         )
         
         if "error" in timed_result:
             continue
         
-        # Get arrival time for sorting
+        # Skip routes with incomplete timetable data (null departure times)
         segments = timed_result.get("segments", [])
+        has_null_departure = any(seg.get("departure_time") is None for seg in segments)
+        if has_null_departure:
+            continue
+        
+        # Get arrival time for sorting
         if segments:
             last_seg = next((s for s in reversed(segments) if s.get("arrival_time")), None)
             if last_seg:
                 arrival = last_seg.get("arrival_time", "99:99")
                 timed_result["_arrival"] = arrival
-                timed_result["transfer_buffer_used"] = 5
                 candidates.append(timed_result)
     
     # Sort by arrival time
     candidates.sort(key=lambda x: x.get("_arrival", "99:99"))
-    top_routes = candidates[:3]
+    top_routes = candidates[:5]
     
     # Clean up internal fields and add delay warnings
     current_date = datetime.now().date().isoformat()
@@ -257,5 +191,9 @@ def search_multi_route_api(
         # Add Venue Warnings
         route["venue_warnings"] = get_venue_warnings(route.get("segments", []))
 
+    # Calculate 3-axis scores (Speed, Comfort, Reliability)
+    # Passed top_routes for relative speed comparison
+    for route in top_routes:
+        route["scores"] = calculate_route_scores(route, top_routes)
     
     return {"routes": top_routes, "total_found": len(candidates)}

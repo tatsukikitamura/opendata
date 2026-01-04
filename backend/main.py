@@ -2,8 +2,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from routers import search, timetable, stations
-from services.route_graph import initialize_graph
+from routers import search, stations
+from services.routing import initialize_graph
 from db.database import engine
 from db.models import Base
 
@@ -31,7 +31,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(search.router, tags=["Search"])
-app.include_router(timetable.router, tags=["Timetable"])
+
 app.include_router(stations.router, tags=["Stations"])
 
 

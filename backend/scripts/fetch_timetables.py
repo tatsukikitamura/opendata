@@ -16,7 +16,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from db.models import Base, StationDeparture
 
-load_dotenv(dotenv_path="../.env")
+
+# Load .env from project root
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+load_dotenv(os.path.join(BASE_DIR, ".env"))
+
 
 API_KEY = os.getenv("ODPT_ACCESS_TOKEN")
 BASE_URL = "https://api-challenge.odpt.org/api/v4"
@@ -50,16 +54,40 @@ def fetch_train_timetables(railway_id: str):
         "odpt.Calendar:SaturdayHoliday"
     ]
     
+
     for cal in calendars:
         params_cal = params.copy()
         params_cal["odpt:calendar"] = cal
+        
+        # Determine mapped types
+        target_types = []
+        if "Weekday" in cal:
+            target_types.append("Weekday")
+        elif "SaturdayHoliday" in cal: # Check specific compound first
+            target_types.append("Saturday")
+            target_types.append("Holiday")
+        elif "Saturday" in cal:
+            target_types.append("Saturday")
+        elif "Holiday" in cal:
+            target_types.append("Holiday")
+        else:
+            # Fallback
+            target_types.append("Weekday")
+
+        # Deduplicate types
+        target_types = sorted(list(set(target_types)))
         
         try:
             response = requests.get(url, params=params_cal, timeout=60)
             if response.status_code == 200:
                 data = response.json()
                 if data:
-                    all_trains.extend(data)
+                    # Inject type and duplicate if needed
+                    for w_type in target_types:
+                        for item in data:
+                            new_item = item.copy()
+                            new_item["_inferred_weekday_type"] = w_type
+                            all_trains.append(new_item)
             else:
                  # Some lines might not support calendar filtering or return 404/400?
                  # Actually ODPT usually returns 200 [] or errors.
@@ -98,14 +126,8 @@ def parse_train_timetable(train_data: dict) -> list:
     else:
         direction = "Inbound"
     
-    # Get calendar
-    calendar = train_data.get("odpt:calendar", "")
-    if "Weekday" in calendar:
-        weekday_type = "Weekday"
-    elif "Saturday" in calendar:
-        weekday_type = "Saturday"
-    else:
-        weekday_type = "Holiday"
+    # Get calendar - now using the inferred type from fetch_train_timetables
+    weekday_type = train_data.get("_inferred_weekday_type", "Unknown")
         
     train_number = train_data.get("odpt:trainNumber", "")
     train_type = train_data.get("odpt:trainType", "")
@@ -161,6 +183,46 @@ def parse_train_timetable(train_data: dict) -> list:
     return departures
 
 
+
+
+def fetch_all_railways(operator="odpt.Operator:JR-East"):
+    """Fetch all railways for a specific operator."""
+    url = f"{BASE_URL}/odpt:Railway"
+    params = {
+        #"odpt:operator": operator, # Filter might not work on API side
+        "acl:consumerKey": API_KEY
+    }
+    
+    try:
+        response = requests.get(url, params=params, timeout=60)
+        if response.status_code == 200:
+            data = response.json()
+
+            # Filter in python
+            railways = []
+            for r in data:
+                # Use owl:sameAs as primary ID, fallback to odpt:railway
+                rid = r.get("owl:sameAs") or r.get("odpt:railway")
+                op = r.get("odpt:operator", "")
+                
+                if not rid:
+                    continue
+                    
+                # Check operator (if provided) or prefix
+                if operator in op or "JR-East" in rid:
+                     railways.append(rid)
+            
+            # Filter out Shinkansen
+            railways = [r for r in railways if "Shinkansen" not in r]
+            return sorted(list(set(railways)))
+        else:
+            print(f"Error fetching railways: {response.status_code}")
+            return []
+    except Exception as e:
+        print(f"Error fetching railways: {e}")
+        return []
+
+
 def main():
     if not API_KEY:
         print("ERROR: ODPT_ACCESS_TOKEN not set in .env file")
@@ -177,10 +239,30 @@ def main():
     session.query(StationDeparture).delete()
     session.commit()
     
-    # Railways to fetch (from shared constants)
-    # Railways to fetch (from shared constants)
-    from services.constants import ALL_RAILWAYS
-    railways = ALL_RAILWAYS
+
+    # Fetch railways dynamically
+    print("\nFetching railway list from API...")
+    target_operators = [
+        "odpt.Operator:JR-East",
+        "odpt.Operator:TokyoMetro",
+        "odpt.Operator:Toei"
+    ]
+    
+    railways = []
+    for op in target_operators:
+        print(f"  Fetching {op}...")
+        op_railways = fetch_all_railways(op)
+        railways.extend(op_railways)
+        print(f"    -> Found {len(op_railways)} lines")
+    
+    # Dedup and sort
+    railways = sorted(list(set(railways)))
+    
+    if not railways:
+        print("No railways found. Exiting.")
+        return
+
+    print(f"Total Target Railways: {len(railways)} lines")
     
     total_records = 0
     

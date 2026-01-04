@@ -44,14 +44,28 @@ export async function checkBackendHealth() {
  * @param {string} time - Departure time (HH:MM)
  * @returns {Promise<Object>} Object with routes array
  */
-export async function searchMultiRoute(from, to, time) {
+export async function searchRoute(from, to, time) {
     try {
-        const url = `${API_BASE}/search_multi?from_station=${encodeURIComponent(from)}&to_station=${encodeURIComponent(to)}&time=${encodeURIComponent(time)}`;
+        const url = `${API_BASE}/search?from_station=${encodeURIComponent(from)}&to_station=${encodeURIComponent(to)}&time=${encodeURIComponent(time)}`;
         const res = await fetch(url);
         const data = await res.json();
         return data;
     } catch (e) {
         console.error("API Error:", e);
         throw new Error("サーバーに接続できませんでした。");
+    }
+}
+/**
+ * Get all available stations.
+ * @returns {Promise<string[]>} List of station names
+ */
+export async function getStations() {
+    try {
+        const res = await fetch(`${API_BASE}/stations`);
+        const data = await res.json();
+        return data;
+    } catch (e) {
+        console.error("API Error:", e);
+        return [];
     }
 }
