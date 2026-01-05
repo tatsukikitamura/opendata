@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, Float
+from sqlalchemy import Column, String, Integer, Float, Boolean
 from .database import Base
 
 class StationDeparture(Base):
@@ -35,12 +35,24 @@ class StationInterval(Base):
     railway_name = Column(String, index=True)
     time_minutes = Column(Float)
 
-class DelayLog(Base):
-    __tablename__ = "delay_logs"
+
+# =============================================================================
+# Train Status (from odpt:TrainInformation API)
+# =============================================================================
+
+class TrainStatus(Base):
+    """
+    Records train operation status from odpt:TrainInformation API.
+    Each record represents the status of a railway line at a specific point in time.
+    """
+    __tablename__ = "train_statuses"
 
     id = Column(Integer, primary_key=True, index=True)
-    timestamp = Column(String, index=True) # ISO format string
-    trip_id = Column(String, index=True)
-    route_id = Column(String, index=True)
-    max_delay = Column(Integer)
-    vehicle_id = Column(String)
+    timestamp = Column(String, index=True)        # Collection time (ISO format, JST)
+    railway_id = Column(String, index=True)       # e.g., "odpt.Railway:JR-East.ChuoRapid"
+    railway_name = Column(String, index=True)     # e.g., "ChuoRapid" or "中央線快速"
+    operator = Column(String)                     # e.g., "odpt.Operator:JR-East"
+    status = Column(String)                       # e.g., "平常運転", "運行情報あり", "お知らせ"
+    status_text = Column(String)                  # Detailed description (delay reason, etc.)
+    is_delayed = Column(Boolean, default=False, index=True)  # True if not normal operation
+

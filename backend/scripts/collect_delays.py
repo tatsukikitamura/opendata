@@ -1,123 +1,156 @@
+"""
+Collect train operation status from ODPT TrainInformation API.
+
+This script fetches train status data and saves it to daily JSONL files.
+Focused on delay/incident information to calculate reliability scores.
+"""
 import os
-import requests
 import json
 import datetime
+import requests
 from pathlib import Path
+from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 
-# Load .env for local development
-load_dotenv()
+# Load .env from project root
+load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
-from google.transit import gtfs_realtime_pb2
-
+# =============================================================================
 # Configuration
-GTFS_RT_URL = "https://api-challenge.odpt.org/api/v4/gtfs/realtime/jreast_odpt_train_trip_update"
+# =============================================================================
+
 ACCESS_TOKEN = os.environ.get("ODPT_ACCESS_TOKEN")
-# Save data relative to this script: backend/scripts/../data/delays -> backend/data/delays
+BASE_URL = "https://api-challenge.odpt.org/api/v4"
 DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "delays"
 
-def fetch_gtfs_rt():
-    """Fetch GTFS-RT TripUpdate data and return as cleaned JSON list."""
+# Timezone
+JST = ZoneInfo("Asia/Tokyo")
+
+
+# =============================================================================
+# Core Functions
+# =============================================================================
+
+def fetch_train_information() -> list:
+    """
+    Fetch train information from ODPT API.
+    Returns list of train status records.
+    """
     if not ACCESS_TOKEN:
         print("Error: ODPT_ACCESS_TOKEN not set")
-        return None
+        return []
 
-    # Remove try-except to allow error to propagate and fail the action
-    url = f"{GTFS_RT_URL}?acl:consumerKey={ACCESS_TOKEN}"
+    url = f"{BASE_URL}/odpt:TrainInformation"
+    params = {"acl:consumerKey": ACCESS_TOKEN}
+    
     print(f"Fetching: {url}")
     
-    resp = requests.get(url)
+    resp = requests.get(url, params=params, timeout=30)
     resp.raise_for_status()
     
-    # Parse GTFS-RT protobuf
-    feed = gtfs_realtime_pb2.FeedMessage()
-    feed.ParseFromString(resp.content)
+    data = resp.json()
+    print(f"Fetched {len(data)} records")
     
-    timestamp = datetime.datetime.now().isoformat()
-    cleaned_data = []
+    return data
+
+
+def parse_train_status(raw_data: list) -> list:
+    """
+    Parse raw API response into cleaned records.
+    """
+    now_jst = datetime.datetime.now(JST)
+    timestamp = now_jst.isoformat()
     
-    for entity in feed.entity:
-        if not entity.HasField("trip_update"):
-            continue
-            
-        trip_update = entity.trip_update
-        trip = trip_update.trip
+    records = []
+    
+    for item in raw_data:
+        railway_id = item.get("odpt:railway", "")
+        operator = item.get("odpt:operator", "")
         
-        # Extract max delay for this trip
-        max_delay = 0
-        for update in trip_update.stop_time_update:
-            delay = 0
-            if update.HasField("arrival") and update.arrival.HasField("delay"):
-                delay = update.arrival.delay
-            elif update.HasField("departure") and update.departure.HasField("delay"):
-                delay = update.departure.delay
-            
-            if delay > max_delay:
-                max_delay = delay
+        # Extract railway short name (e.g., "ChuoRapid" from "odpt.Railway:JR-East.ChuoRapid")
+        railway_name = ""
+        if railway_id:
+            parts = railway_id.replace("odpt.Railway:", "").split(".")
+            railway_name = parts[-1] if parts else ""
         
-        # Serialize protobuf objects to dict for JSON storage
-        cleaned_data.append({
+        # Handle status (can be dict or string)
+        status_raw = item.get("odpt:trainInformationStatus", {})
+        if isinstance(status_raw, dict):
+            status = status_raw.get("ja", str(status_raw)) or ""
+        else:
+            status = str(status_raw) if status_raw else ""
+        
+        # Handle status text (can be dict or string)
+        text_raw = item.get("odpt:trainInformationText", {})
+        if isinstance(text_raw, dict):
+            status_text = text_raw.get("ja", str(text_raw)) or ""
+        else:
+            status_text = str(text_raw) if text_raw else ""
+        
+        # Determine if delayed (not normal operation)
+        is_delayed = "平常" not in status_text if status_text else False
+        
+        records.append({
             "timestamp": timestamp,
-            "trip_id": trip.trip_id,
-            "route_id": trip.route_id,
-            "max_delay_seconds": max_delay,
-            "vehicle_id": trip_update.vehicle.id if trip_update.HasField("vehicle") else None
+            "railway_id": railway_id,
+            "railway_name": railway_name,
+            "operator": operator,
+            "status": status,
+            "status_text": status_text,
+            "is_delayed": is_delayed
         })
-
-    return cleaned_data
-
-
-# ... existing code ...
-
-# Load .env for local development
-load_dotenv()
-
-from google.transit import gtfs_realtime_pb2
+    
+    return records
 
 
-# ... existing fetch_gtfs_rt ...
-
-from zoneinfo import ZoneInfo
-
-# ...
-
-def save_json(data):
-    """Save data to daily JSON Lines file."""
-    if not data:
-        print("No data to save.")
+def save_jsonl(records: list):
+    """
+    Save records to daily JSONL file.
+    """
+    if not records:
+        print("No records to save.")
         return
-
+    
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     
-    # Use JST for daily filename
-    jst = ZoneInfo("Asia/Tokyo")
-    now_jst = datetime.datetime.now(jst)
+    now_jst = datetime.datetime.now(JST)
     today = now_jst.strftime("%Y%m%d")
-    filename = DATA_DIR / f"delay_{today}.jsonl"
+    filename = DATA_DIR / f"status_{today}.jsonl"
     
+    # Save as JSON Lines (one record per line)
     with open(filename, "a", encoding="utf-8") as f:
-        # Save as one JSON object per line (JSON Lines)
-        record = {
+        entry = {
             "fetched_at": now_jst.isoformat(),
-            "data": data
+            "data": records
         }
-        f.write(json.dumps(record, ensure_ascii=False) + "\n")
+        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
     
-    print(f"Appended {len(data)} records to {filename}")
+    # Count delayed records
+    delayed_count = sum(1 for r in records if r["is_delayed"])
+    print(f"Saved {len(records)} records ({delayed_count} delayed) to {filename}")
+
+
+# =============================================================================
+# Main
+# =============================================================================
 
 if __name__ == "__main__":
     # Skip during late night (01:30 - 04:00 JST)
-    jst = ZoneInfo("Asia/Tokyo")
-    now_jst = datetime.datetime.now(jst)
+    now_jst = datetime.datetime.now(JST)
     current_time = now_jst.time()
     
-    skip_start = datetime.datetime.strptime("01:30", "%H:%M").time()
-    skip_end = datetime.datetime.strptime("04:00", "%H:%M").time()
+    skip_start = datetime.time(1, 30)
+    skip_end = datetime.time(4, 0)
     
     if skip_start <= current_time <= skip_end:
-        print(f"Skipping execution during late night maintenance window (01:30 - 04:00 JST). Current JST: {current_time}")
+        print(f"Skipping execution during late night window (01:30 - 04:00 JST). Current: {current_time}")
         exit(0)
-        
+    
     print(f"Starting collection at {now_jst}")
-    data = fetch_gtfs_rt()
-    save_json(data)
+    
+    # Fetch and process
+    raw_data = fetch_train_information()
+    records = parse_train_status(raw_data)
+    save_jsonl(records)
+    
+    print("Done.")

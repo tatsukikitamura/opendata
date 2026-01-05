@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 from db.database import get_db
 from services.routing import get_graph
 from services.timetable.core import search_route_with_times
-from services.delay import check_route_delay, get_delay_summary
 from services.risk import get_route_risk
 from services.venue import get_venue_warnings
 from services.score import calculate_route_scores
@@ -168,21 +167,18 @@ def search_route_api(
     for route in top_routes:
         route.pop("_arrival", None)
         
-        # Add risk score
-        route["risk"] = get_route_risk(route, departure_time_str)
+        # Add risk score (includes delay reasons)
+        risk_data = get_route_risk(route, departure_time_str)
+        route["risk"] = risk_data
         
-        # Add delay warnings
+        # Extract delay warnings from risk reasons for backward compatibility
         delay_warnings = []
-        for segment in route.get("segments", []):
-            railway = segment.get("railway", "")
-            if railway:
-                delay_sec = check_route_delay(railway)
-                if delay_sec:
-                    delay_warnings.append({
-                        "railway": railway,
-                        "delay_seconds": delay_sec,
-                        "delay_minutes": delay_sec // 60
-                    })
+        for reason in risk_data.get("reasons", []):
+            delay_warnings.append({
+                "railway": reason.get("railway", ""),
+                "reason": reason.get("latest_reason", ""),
+                "display": reason.get("display", "")
+            })
         route["delay_warnings"] = delay_warnings
         
         # Add Crowd Metrics
