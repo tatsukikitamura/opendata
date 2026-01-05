@@ -29,7 +29,7 @@ function setupAutocomplete(inputId) {
 
     // Create dropdown element
     const list = document.createElement("ul");
-    list.className = "absolute z-50 w-full mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-xl max-h-60 overflow-y-auto hidden";
+    list.className = "absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto hidden";
     parent.appendChild(list);
 
     // Filter and show list on input
@@ -53,7 +53,7 @@ function setupAutocomplete(inputId) {
         list.innerHTML = "";
         matches.forEach(station => {
             const li = document.createElement("li");
-            li.className = "px-4 py-2 hover:bg-slate-700 cursor-pointer text-slate-200 transition-colors";
+            li.className = "px-4 py-2 hover:bg-slate-50 cursor-pointer text-slate-700 transition-colors border-b border-slate-100 last:border-0";
             li.textContent = station;
             li.addEventListener("click", () => {
                 input.value = station;

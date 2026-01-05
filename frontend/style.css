@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, 
     "Hiragino Kaku Gothic ProN", "Hiragino Sans", 
     "Noto Sans JP", Meiryo, sans-serif;
   font-feature-settings: "palt";
@@ -12,33 +12,32 @@ code, pre, .font-mono {
   font-family: 'JetBrains Mono', monospace;
 }
 
-/* Glassmorphism Utilities */
+/* Glassmorphism Utilities (Legacy name, now Solid Card) */
 .glass-panel {
-  background: rgba(30, 41, 59, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: white;
+  border: 1px solid #e2e8f0; /* slate-200 */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
 }
 
-/* Custom Scrollbar */
+/* Custom Scrollbar (Light Mode) */
 ::-webkit-scrollbar {
   width: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.5);
+  background: rgba(241, 245, 249, 0.5); /* slate-100 */
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(71, 85, 105, 0.8);
+  background: rgba(203, 213, 225, 0.8); /* slate-300 */
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.8);
+  background: rgba(148, 163, 184, 0.8); /* slate-400 */
 }
 
-/* Autocomplete Dropdown */
+/* Autocomplete Dropdown (Light Mode) */
 .autocomplete-dropdown {
     position: absolute;
     top: 100%;
@@ -46,21 +45,21 @@ code, pre, .font-mono {
     right: 0;
     max-height: 240px;
     overflow-y: auto;
-    background: rgba(30, 41, 59, 0.95);
+    background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(12px);
-    border: 1px solid rgba(71, 85, 105, 0.5);
+    border: 1px solid rgba(226, 232, 240, 0.8); /* slate-200 */
     border-radius: 0.75rem;
     margin-top: 0.5rem;
     z-index: 50;
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
 }
 
 .autocomplete-item {
     padding: 0.75rem 1rem;
     cursor: pointer;
-    color: #cbd5e1; /* slate-300 */
+    color: #334155; /* slate-700 */
     transition: all 0.15s ease;
-    border-bottom: 1px solid rgba(51, 65, 85, 0.3);
+    border-bottom: 1px solid rgba(241, 245, 249, 0.8); /* slate-100 */
 }
 
 .autocomplete-item:last-child {
@@ -68,8 +67,8 @@ code, pre, .font-mono {
 }
 
 .autocomplete-item:hover, .autocomplete-item.active {
-    background: rgba(244, 63, 94, 0.2); /* rose-500 with opacity */
-    color: #fff;
+    background: rgba(244, 63, 94, 0.1); /* rose-500 with opacity */
+    color: #be123c; /* rose-700 */
     padding-left: 1.25rem; /* Slight shift effect */
 }
 

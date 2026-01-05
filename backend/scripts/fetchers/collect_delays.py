@@ -21,7 +21,7 @@ load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
 ACCESS_TOKEN = os.environ.get("ODPT_ACCESS_TOKEN")
 BASE_URL = "https://api-challenge.odpt.org/api/v4"
-DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "delays"
+DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "delays"
 
 # Timezone
 JST = ZoneInfo("Asia/Tokyo")

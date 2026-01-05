@@ -8,7 +8,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 # Add backend to path
-sys.path.append(str(Path(__file__).resolve().parent.parent))
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
 from db.models import StationDeparture, StationOrder, StationInterval
 from db.database import Base, SessionLocal
@@ -33,7 +33,7 @@ RAILWAY_MAP = {
 }
 
 def load_metro_gtfs():
-    gtfs_dir = Path(__file__).resolve().parent.parent / "data" / "metro_gtfs"
+    gtfs_dir = Path(__file__).resolve().parent.parent.parent / "data" / "metro_gtfs"
     
     if not gtfs_dir.exists():
         print(f"GTFS directory not found: {gtfs_dir}")

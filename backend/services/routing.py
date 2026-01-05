@@ -568,57 +568,107 @@ class RouteGraph:
         self.railways["odpt.Railway:Toei.Oedo"] = {"name_ja": "大江戸線", "name_en": "Oedo Line"}
 
     def _load_gtfs_stations_data(self) -> list:
-
-        """Load Tokyo Metro stations from GTFS and return as list of ODPT-like objects."""
-        gtfs_dir = os.path.join(os.path.dirname(__file__), "../../backend/data/metro_gtfs")
-        if not os.path.exists(gtfs_dir):
-            return []
-            
-        print("Loading GTFS stations...")
+        """Load Tokyo Metro and Toei stations from GTFS and return as list of ODPT-like objects."""
+        from pathlib import Path
+        import csv
         
-        # Metro Line Code Map
-        metro_codes = {
-            "G": "Ginza", "M": "Marunouchi", "m": "Marunouchi", "H": "Hibiya",
-            "T": "Tozai", "C": "Chiyoda", "Y": "Yurakucho", "Z": "Hanzomon",
-            "N": "Namboku", "F": "Fukutoshin", "A": "Asakusa", "I": "Mita", 
-            "S": "Shinjuku", "E": "Oedo"
-        }
+        base_dir = Path(__file__).resolve().parent.parent / "data"
+        gtfs_dirs = [
+            {"path": base_dir / "metro_gtfs", "type": "Metro"},
+            {"path": base_dir / "Toei-Train-GTFS", "type": "Toei"}
+        ]
         
         generated_stations = []
         
-        try:
-            with open(os.path.join(gtfs_dir, "stops.txt"), "r", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    stop_code = row.get("stop_code")
-                    stop_name = row["stop_name"]
-                    
-                    if not stop_code: continue
-                    
-                    # Infer railway
-                    prefix = stop_code[0]
-                    line_name = metro_codes.get(prefix)
-                    
-                    if line_name:
-                        suffix = line_name
-                        railway_id = f"odpt.Railway:TokyoMetro.{suffix}"
-                        if prefix in ["A", "I", "S", "E"]:
-                             railway_id = f"odpt.Railway:Toei.{suffix}"
+        # Line Code Maps
+        # Metro
+        metro_codes = {
+            "G": "Ginza", "M": "Marunouchi", "m": "Marunouchi", "H": "Hibiya",
+            "T": "Tozai", "C": "Chiyoda", "Y": "Yurakucho", "Z": "Hanzomon",
+            "N": "Namboku", "F": "Fukutoshin"
+        }
+        # Toei
+        toei_codes = {
+            "A": "Asakusa", "I": "Mita", "S": "Shinjuku", "E": "Oedo"
+        }
 
-                        # Create synthetic object
-                        operator = "TokyoMetro" if prefix not in ["A", "I", "S", "E"] else "Toei"
-                        station_id = f"gtfs.Station:{operator}.{suffix}.{stop_code}"
-                        
-                        generated_stations.append({
-                            "owl:sameAs": station_id,
-                            "dc:title": stop_name,
-                            "odpt:railway": railway_id,
-                            "odpt:stationTitle": {"ja": stop_name}
-                        })
-                        
-        except Exception as e:
-            print(f"Error parse GTFS stops: {e}")
+        for gtfs_info in gtfs_dirs:
+            gtfs_dir = gtfs_info["path"]
+            source_type = gtfs_info["type"]
             
+            if not gtfs_dir.exists():
+                print(f"Warning: GTFS directory not found at {gtfs_dir}")
+                continue
+                
+            print(f"Loading {source_type} GTFS stations from {gtfs_dir}...")
+            
+            # Load Translations
+            translations = {}
+            trans_file = gtfs_dir / "translations.txt"
+            if trans_file.exists():
+                try:
+                    with open(trans_file, "r", encoding="utf-8") as f:
+                        reader = csv.DictReader(f)
+                        for row in reader:
+                            if row.get("table_name") == "stops" and row.get("field_name") == "stop_name":
+                                if row.get("language") == "en":
+                                    ja_name = row.get("field_value")
+                                    en_name = row.get("translation")
+                                    if ja_name and en_name:
+                                        translations[ja_name] = en_name
+                except Exception as e:
+                    print(f"Error loading translations from {trans_file}: {e}")
+
+            try:
+                with open(gtfs_dir / "stops.txt", "r", encoding="utf-8") as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        stop_code = row.get("stop_code")
+                        stop_name = row["stop_name"]
+                        
+                        if not stop_code: continue
+                        
+                        # Get English name
+                        stop_name_en = translations.get(stop_name, stop_name)
+
+                        # Infer railway
+                        prefix = stop_code[0]
+                        line_name = None
+                        operator_prefix = ""
+                        
+                        if source_type == "Metro":
+                            line_name = metro_codes.get(prefix)
+                            operator_prefix = "TokyoMetro"
+                        elif source_type == "Toei":
+                            line_name = toei_codes.get(prefix)
+                            operator_prefix = "Toei"
+                            
+                        # Fallback: Check if code is in other map (Mixed data?)
+                        if not line_name:
+                            if prefix in metro_codes:
+                                line_name = metro_codes[prefix]
+                                operator_prefix = "TokyoMetro"
+                            elif prefix in toei_codes:
+                                line_name = toei_codes[prefix]
+                                operator_prefix = "Toei"
+                        
+                        if line_name:
+                            suffix = line_name
+                            railway_id = f"odpt.Railway:{operator_prefix}.{suffix}"
+
+                            # Create synthetic object
+                            station_id = f"gtfs.Station:{operator_prefix}.{suffix}.{stop_code}"
+                            
+                            generated_stations.append({
+                                "owl:sameAs": station_id,
+                                "dc:title": stop_name,
+                                "odpt:stationTitle": {"ja": stop_name, "en": stop_name_en},
+                                "odpt:railway": railway_id
+                            })
+                            
+            except Exception as e:
+                print(f"Error loading stops from {gtfs_dir}: {e}")
+                
         return generated_stations
 
     def _load_gtfs_edges(self):

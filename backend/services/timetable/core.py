@@ -67,7 +67,8 @@ def search_route_with_times(
                 train["train_number"], 
                 train["railway"], 
                 to_station_en, 
-                weekday
+                weekday,
+                after_time=train["departure_time"]
             )
             
             # Default to theoretical time from graph if arrival time not found

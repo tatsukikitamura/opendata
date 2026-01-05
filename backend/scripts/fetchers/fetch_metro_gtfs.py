@@ -6,12 +6,12 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Load .env explicitly
-env_path = Path(__file__).resolve().parent.parent.parent / ".env"
+env_path = Path(__file__).resolve().parent.parent.parent.parent / ".env"
 load_dotenv(env_path)
 
 API_KEY = os.getenv("ODPT_ACCESS_TOKEN")
 BASE_URL = "https://api.odpt.org/api/v4"
-DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "metro_gtfs"
+DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "metro_gtfs"
 
 def fetch_metro_gtfs():
     if not API_KEY:

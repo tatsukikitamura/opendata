@@ -7,7 +7,7 @@ import os
 import sys
 
 # Add parent directory to path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 import requests
 from dotenv import load_dotenv
@@ -16,7 +16,7 @@ from sqlalchemy.orm import sessionmaker
 
 
 # Load .env from project root
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 

@@ -9,7 +9,7 @@ from pathlib import Path
 from sqlalchemy.orm import Session
 
 # Add project root to path
-sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent.parent))
 
 from backend.db.database import SessionLocal, engine
 from backend.db.models import Base, TrainStatus
@@ -60,7 +60,7 @@ def main():
     
     db = SessionLocal()
     
-    data_dir = Path(__file__).resolve().parent.parent / "data" / "delays"
+    data_dir = Path(__file__).resolve().parent.parent.parent / "data" / "delays"
     print(f"Looking for data in {data_dir}")
     
     try:

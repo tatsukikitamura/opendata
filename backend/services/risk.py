@@ -113,36 +113,73 @@ def _normalize_railway_name(railway: str) -> str:
 def _get_railway_stats(db: Session, railway_name: str) -> dict:
     """
     Get delay statistics for a railway.
+    Groups continuous delay records into single events to avoid over-counting.
     
     Returns:
         dict: {
-            "total": int (total records),
-            "delayed": int (delayed records),
-            "latest_reason": str (most recent delay reason)
+            "total_checks": int,  # Total number of observations
+            "delay_events": int,  # Number of distinct delay events
+            "latest_reason": str
         }
     """
     # Query matching railway_name
-    # Match both exact name and partial (e.g., "ChuoRapid" matches "JR-East.ChuoRapid")
+    # Handle full ID (odpt.Railway:JR-East.Tokaido) -> Tokaido
+    simple_name = railway_name.split(".")[-1] if "." in railway_name else railway_name
+    
     query = select(TrainStatus).where(
-        TrainStatus.railway_name == railway_name
-    )
+        TrainStatus.railway_name == simple_name
+    ).order_by(TrainStatus.timestamp)
     
     records = db.execute(query).scalars().all()
     
-    total = len(records)
-    delayed = sum(1 for r in records if r.is_delayed)
-    
-    # Get latest delay reason
+    total_checks = len(records)
+    if total_checks == 0:
+        return {"total": 0, "delayed": 0, "latest_reason": ""}
+
+    # Calculate distinct delay events
+    delay_events = 0
+    last_delay_time = None
     latest_reason = ""
-    delayed_records = [r for r in records if r.is_delayed]
-    if delayed_records:
-        # Sort by timestamp descending
-        delayed_records.sort(key=lambda r: r.timestamp or "", reverse=True)
-        latest_reason = delayed_records[0].status_text or ""
     
+    # Threshold to consider as same event (e.g., 60 minutes)
+    SAME_EVENT_THRESHOLD_MIN = 60
+    
+    from datetime import datetime, timedelta
+    
+    delayed_records = [r for r in records if r.is_delayed]
+    
+    for r in delayed_records:
+        # Update latest reason
+        if r.status_text:
+            latest_reason = r.status_text
+            
+        try:
+            # Parse timestamp (ISO format)
+            # Handle potential Z suffix or offset
+            ts_str = r.timestamp.replace("Z", "+00:00")
+            current_time = datetime.fromisoformat(ts_str)
+            
+            if last_delay_time is None:
+                # First delay found
+                delay_events += 1
+                last_delay_time = current_time
+            else:
+                # Check time difference
+                diff = current_time - last_delay_time
+                if diff.total_seconds() / 60 > SAME_EVENT_THRESHOLD_MIN:
+                    # New event
+                    delay_events += 1
+                    last_delay_time = current_time
+                else:
+                    # Continuation of same event, just update time
+                    last_delay_time = current_time
+                    
+        except ValueError:
+            continue
+            
     return {
-        "total": total,
-        "delayed": delayed,
+        "total": total_checks,
+        "delayed": delay_events,
         "latest_reason": latest_reason
     }
 

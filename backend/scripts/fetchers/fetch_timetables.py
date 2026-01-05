@@ -12,13 +12,13 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 # Add parent directory to path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from db.models import Base, StationDeparture
 
 
 # Load .env from project root
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 

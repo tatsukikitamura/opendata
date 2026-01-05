@@ -80,22 +80,22 @@ function renderRouteList() {
         const card = document.createElement("div");
         
         // Card styling based on Risk
-        let bgClass = "bg-slate-800/60 hover:bg-slate-700/60 border-slate-700";
+        let bgClass = "bg-white hover:bg-slate-50 border-slate-200 shadow-sm";
         if (risk.level === 'HIGH') {
-            bgClass = "bg-red-900/20 hover:bg-red-900/30 border-red-500/50";
+            bgClass = "bg-red-50 hover:bg-red-100 border-red-200 shadow-sm";
         } else if (risk.level === 'MEDIUM') {
-            bgClass = "bg-amber-900/20 hover:bg-amber-900/30 border-amber-500/50";
+            bgClass = "bg-amber-50 hover:bg-amber-100 border-amber-200 shadow-sm";
         }
         
-        card.className = `p-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${bgClass}`;
+        card.className = `p-8 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${bgClass}`;
         
         let riskLabel = "";
         if (risk.level === 'HIGH') {
-            riskLabel = `<span class="px-2 py-1 rounded text-xs font-bold bg-red-500/20 text-red-200 border border-red-500/50">遅延リスク高</span>`;
+            riskLabel = `<span class="px-2 py-1 rounded text-xs font-bold bg-red-100 text-red-700 border border-red-200">遅延リスク高</span>`;
         } else if (risk.level === 'MEDIUM') {
-            riskLabel = `<span class="px-2 py-1 rounded text-xs font-bold bg-amber-500/20 text-amber-200 border border-amber-500/50">遅延注意</span>`;
+            riskLabel = `<span class="px-2 py-1 rounded text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200">遅延注意</span>`;
         } else {
-            riskLabel = `<span class="px-2 py-1 rounded text-xs font-bold bg-emerald-500/20 text-emerald-200 border border-emerald-500/50">平常運行</span>`;
+            riskLabel = `<span class="px-2 py-1 rounded text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">平常運行</span>`;
         }
         
         // Crowd Label
@@ -107,42 +107,43 @@ function renderRouteList() {
         card.innerHTML = `
             <div>
                 <div class="flex items-center gap-3 mb-1">
-                    <span class="text-2xl font-bold text-white">${arrival} 着</span>
-                    <span class="text-sm text-slate-400">(${firstDeparture} 発)</span>
+                    <span class="text-2xl font-bold text-slate-800">${arrival} 着</span>
+                    <span class="text-sm text-slate-500">(${firstDeparture} 発)</span>
                 </div>
-                <div class="flex items-center gap-4 text-sm text-slate-400 mt-2">
+                <div class="flex items-center gap-4 text-sm text-slate-500 mt-2">
                     <span>乗換 ${transfers}回</span>
-                    <span class="text-xs border border-slate-600 px-2 py-0.5 rounded-full">${crowdIcon}</span>
+                    <span class="text-xs border border-slate-300 px-2 py-0.5 rounded-full bg-slate-100">${crowdIcon}</span>
                 </div>
-                
+            </div>
+            <div>
                 <!-- 3-Axis Scores -->
                 <div class="mt-3 text-xs space-y-1 w-48">
-                    <div class="flex items-center gap-2">
-                        <span class="w-8 text-slate-400">速さ</span>
-                        <div class="flex-1 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                    <div class="flex items-center gap-4">
+                        <span class="w-8 text-slate-500">速さ</span>
+                        <div class="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
                             <div class="h-full bg-blue-500" style="width: ${(route.scores?.speed || 0) * 20}%"></div>
                         </div>
-                        <span class="w-6 text-right font-mono">${(route.scores?.speed || 0).toFixed(1)}</span>
+                        <span class="w-6 text-right font-mono text-slate-600">${(route.scores?.speed || 0).toFixed(1)}</span>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <span class="w-8 text-slate-400">快適</span>
-                        <div class="flex-1 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                    <div class="flex items-center gap-4">
+                        <span class="w-8 text-slate-500">快適</span>
+                        <div class="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
                             <div class="h-full bg-emerald-500" style="width: ${(route.scores?.comfort || 0) * 20}%"></div>
                         </div>
-                        <span class="w-6 text-right font-mono">${(route.scores?.comfort || 0).toFixed(1)}</span>
+                        <span class="w-6 text-right font-mono text-slate-600">${(route.scores?.comfort || 0).toFixed(1)}</span>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <span class="w-8 text-slate-400">安定</span>
-                        <div class="flex-1 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                    <div class="flex items-center gap-4">
+                        <span class="w-8 text-slate-500">安定</span>
+                        <div class="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
                             <div class="h-full bg-purple-500" style="width: ${(route.scores?.reliability || 0) * 20}%"></div>
                         </div>
-                        <span class="w-6 text-right font-mono">${(route.scores?.reliability || 0).toFixed(1)}</span>
+                        <span class="w-6 text-right font-mono text-slate-600">${(route.scores?.reliability || 0).toFixed(1)}</span>
                     </div>
                 </div>
             </div>
             <div class="text-right">
                 ${riskLabel}
-                <div class="text-xs text-slate-500 mt-2">詳細を見る &gt;</div>
+                <div class="text-xs text-slate-400 mt-2">詳細を見る &gt;</div>
             </div>
         `;
         
@@ -199,17 +200,17 @@ function renderDelayWarnings(route) {
     if (venueWarnings.transfer_warnings.length > 0) {
         hasContent = true;
         const el = document.createElement("div");
-        el.className = "bg-orange-500/20 border border-orange-500/50 rounded-xl p-4 mb-2";
+        el.className = "bg-orange-50 border border-orange-200 rounded-xl p-4 mb-2";
         el.innerHTML = `
             <div class="flex items-center gap-2 mb-3">
                 <span class="text-2xl">🎪</span>
-                <span class="font-bold text-orange-200">イベント会場の最寄り駅を通ります</span>
+                <span class="font-bold text-orange-800">イベント会場の最寄り駅を通ります</span>
             </div>
             <div class="space-y-2">
                 ${venueWarnings.transfer_warnings.map(w => `
-                    <div class="bg-black/20 rounded-lg p-3">
-                        <p class="font-medium text-orange-100">📍 ${w.station}駅 → ${w.venue}</p>
-                        <p class="text-xs text-slate-400 mt-1">収容人数: ${w.capacity.toLocaleString()}人 / ${w.note}</p>
+                    <div class="bg-white/60 rounded-lg p-3 border border-orange-100">
+                        <p class="font-medium text-orange-900">📍 ${w.station}駅 → ${w.venue}</p>
+                        <p class="text-xs text-slate-500 mt-1">収容人数: ${w.capacity.toLocaleString()}人 / ${w.note}</p>
                     </div>
                 `).join('')}
             </div>
@@ -221,11 +222,11 @@ function renderDelayWarnings(route) {
     if (venueWarnings.passing_info.length > 0) {
         hasContent = true;
         const el = document.createElement("div");
-        el.className = "bg-slate-700/30 border border-slate-600/50 rounded-xl p-3 mb-2";
+        el.className = "bg-slate-50 border border-slate-200 rounded-xl p-3 mb-2";
         el.innerHTML = `
             <div class="flex items-center gap-2">
                 <span class="text-lg">ℹ️</span>
-                <span class="text-sm text-slate-300">通過駅周辺の会場: ${venueWarnings.passing_info.map(p => `${p.station}(${p.venues.join(', ')})`).join(' / ')}</span>
+                <span class="text-sm text-slate-600">通過駅周辺の会場: ${venueWarnings.passing_info.map(p => `${p.station}(${p.venues.join(', ')})`).join(' / ')}</span>
             </div>
         `;
         container.appendChild(el);
@@ -235,13 +236,13 @@ function renderDelayWarnings(route) {
     if (crowd.level !== 'UNKNOWN') {
         hasContent = true;
         const crowdEl = document.createElement("div");
-        crowdEl.className = "bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mb-2";
+        crowdEl.className = "bg-blue-50 border border-blue-200 rounded-xl p-4 mb-2";
         crowdEl.innerHTML = `
             <div class="flex items-center gap-2 mb-2">
                 <span class="text-xl">📊</span>
-                <span class="font-bold text-blue-200">平均駅規模: ${crowd.score.toLocaleString()}人/日 (${crowd.level === 'HIGH' ? '大都市圏' : crowd.level === 'MEDIUM' ? '中規模' : '郊外'})</span>
+                <span class="font-bold text-blue-800">平均駅規模: ${crowd.score.toLocaleString()}人/日 (${crowd.level === 'HIGH' ? '大都市圏' : crowd.level === 'MEDIUM' ? '中規模' : '郊外'})</span>
             </div>
-             <div class="text-xs text-slate-400 pl-1">
+             <div class="text-xs text-slate-500 pl-1">
                 経由駅の規模: ${crowd.details.join(', ')}
             </div>
         `;
@@ -252,16 +253,16 @@ function renderDelayWarnings(route) {
     if (risk.reasons.length > 0) {
         hasContent = true;
         
-        let colorClass = "bg-emerald-500/10 border-emerald-500/50 text-emerald-100";
+        let colorClass = "bg-emerald-50 border-emerald-200 text-emerald-800";
         let icon = "✅";
         let levelText = "低い";
         
         if (risk.level === 'HIGH') {
-            colorClass = "bg-red-500/10 border-red-500/50 text-red-100";
+            colorClass = "bg-red-50 border-red-200 text-red-800";
             icon = "⚠️";
             levelText = "高い";
         } else if (risk.level === 'MEDIUM') {
-            colorClass = "bg-amber-500/10 border-amber-500/50 text-amber-100";
+            colorClass = "bg-amber-50 border-amber-200 text-amber-800";
             icon = "⚠️";
             levelText = "中程度";
         }
@@ -273,7 +274,7 @@ function renderDelayWarnings(route) {
                 <span class="text-2xl">${icon}</span>
                 <span class="font-bold text-lg">遅延リスク: ${levelText}</span>
             </div>
-            <div class="bg-black/20 rounded-lg p-3">
+            <div class="bg-white/60 rounded-lg p-3 border border-current-10">
                 <p class="text-xs opacity-70 mb-2">過去の遅延実績データ:</p>
                 <ul class="list-disc list-inside text-sm space-y-1">
                     ${risk.reasons.map(r => `<li>${r}</li>`).join('')}
@@ -286,12 +287,12 @@ function renderDelayWarnings(route) {
     realTimeWarnings.forEach(warning => {
         hasContent = true;
         const el = document.createElement("div");
-        el.className = "bg-amber-500/20 border border-amber-500/50 rounded-xl p-4 mb-2 flex items-center gap-3";
+        el.className = "bg-amber-50 border border-amber-200 rounded-xl p-4 mb-2 flex items-center gap-3";
         el.innerHTML = `
             <span class="text-2xl">⚡️</span>
             <div>
-                <p class="text-amber-200 font-medium">${warning.railway}</p>
-                <p class="text-amber-100/70 text-sm">現在 約${warning.delay_minutes}分の遅延が発生しています</p>
+                <p class="text-amber-800 font-medium">${warning.railway}</p>
+                <p class="text-amber-700/80 text-sm">現在 約${warning.delay_minutes}分の遅延が発生しています</p>
             </div>
         `;
         container.appendChild(el);

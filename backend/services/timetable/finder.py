@@ -14,32 +14,54 @@ def get_arrival_time(
     train_number: str,
     railway_name: str,
     station_name: str,
-    weekday: str = "Weekday"
+    weekday: str = "Weekday",
+    after_time: str = None
 ) -> Optional[str]:
     """
     Get the arrival time of a train at a specific station.
+    If after_time is provided, ensures the arrival is after that time (handling day crossing).
     """
-    record = db.query(StationDeparture).filter(
-        StationDeparture.train_number == train_number,
-        StationDeparture.railway_name == railway_name,
-        StationDeparture.station_name.ilike(station_name),
-        StationDeparture.weekday_type == weekday
-    ).first()
-    
-    if record:
-        return record.departure_time
-
-    # Fallback: Try finding the train on ANY railway at this station
-    # (Fixes issue where train switches line name, e.g. Keiyo -> Musashino/ChuoSobu)
-    record = db.query(StationDeparture).filter(
+    base_query = db.query(StationDeparture).filter(
         StationDeparture.train_number == train_number,
         StationDeparture.station_name.ilike(station_name),
         StationDeparture.weekday_type == weekday
-    ).first()
+    )
     
-    if record:
-        return record.departure_time
+    # Try finding exact railway match first
+    entries = base_query.filter(StationDeparture.railway_name == railway_name).all()
+    
+    if not entries:
+        # Fallback: Try ANY railway (fixing direct service name changes)
+        entries = base_query.all()
         
+    if not entries:
+        return None
+        
+    if not after_time:
+        return entries[0].departure_time
+    
+    # Logic to find the correct entry relative to after_time
+    # Candidates:
+    # 1. Same day, time > after_time
+    # 2. Next day (time < after_time, usually early morning)
+    
+    # Sort entries by time
+    entries.sort(key=lambda x: x.departure_time)
+    
+    # 1. Look for same day future time
+    for entry in entries:
+        if entry.departure_time > after_time:
+            return entry.departure_time
+            
+    # 2. If not found, look for early morning time (day crossing)
+    # Assuming the train arrives the next day (e.g. 00:15)
+    # We pick the earliest time that is significantly smaller than after_time
+    # But only if it makes sense (e.g., < 04:00)
+    for entry in entries:
+        if entry.departure_time < "04:00": # Heuristic for next day
+             return entry.departure_time
+             
+    # If no suitable time found, return None (invalid direction or loop)
     return None
 
 
