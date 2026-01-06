@@ -55,12 +55,22 @@ async function executeSearch(from, to, time) {
 function showListView() {
     document.getElementById("route-list-view").classList.remove("hidden");
     document.getElementById("route-detail-view").classList.add("hidden");
+    
+    // Show global nav elements
+    document.getElementById("global-back-link").classList.remove("hidden");
+    document.getElementById("main-header").classList.remove("hidden");
+    
     document.getElementById("route-header").textContent = "検索結果";
 }
 
 function showDetailView(index) {
     document.getElementById("route-list-view").classList.add("hidden");
     document.getElementById("route-detail-view").classList.remove("hidden");
+    
+    // Hide global nav elements to focus on detail content
+    document.getElementById("global-back-link").classList.add("hidden");
+    document.getElementById("main-header").classList.add("hidden");
+    
     renderRouteDetail(index);
 }
 
@@ -386,7 +396,7 @@ function renderDelayWarnings(route) {
             `;
         }
 
-        container.appendChild(createAccordion('venue', '🎪', `イベント情報 (${allVenues.length}件)`, 'orange', content, venueWarnings.transfer_warnings.length > 0));
+        container.appendChild(createAccordion('venue', '🎪', `イベント情報 (${allVenues.length}件)`, 'orange', content, false));
     }
 
     // 4. Crowd Info (📊 駅混雑度)

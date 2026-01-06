@@ -47,6 +47,9 @@ function setupAutocomplete(inputId) {
         
         if (matches.length === 0) {
             list.classList.add("hidden");
+            // バリデーションタイマーをセット (入力中はエラーを消す)
+            clearError(input);
+            scheduleValidation(input, val);
             return;
         }
 
@@ -58,11 +61,16 @@ function setupAutocomplete(inputId) {
             li.addEventListener("click", () => {
                 input.value = station;
                 list.classList.add("hidden");
+                clearError(input); // 選択したらエラーを消す
             });
             list.appendChild(li);
         });
 
         list.classList.remove("hidden");
+        
+        // 入力中もバリデーションをスケジュール
+        clearError(input);
+        scheduleValidation(input, val);
     });
 
     // Hide on click outside
@@ -79,6 +87,64 @@ function setupAutocomplete(inputId) {
              input.dispatchEvent(new Event('input'));
          }
     });
+    
+    // Blur時にエラーチェック（即時）
+    input.addEventListener("blur", () => {
+         const val = input.value.trim();
+         if (val && !allStations.includes(val)) {
+             showError(input, "無効な駅名です");
+         }
+    });
+}
+
+let validationTimers = new Map();
+
+function scheduleValidation(input, value) {
+    if (validationTimers.has(input)) {
+        clearTimeout(validationTimers.get(input));
+    }
+
+    const timer = setTimeout(() => {
+        if (value && !allStations.includes(value)) {
+            showError(input, "無効な駅名です");
+        }
+    }, 1000);
+
+    validationTimers.set(input, timer);
+}
+
+function showError(input, message) {
+    // 既にエラーが表示されているか確認
+    const parent = input.parentElement.parentElement; // div.relative > div.relative > input なので
+    let errorMsg = parent.querySelector(".station-error-message");
+    
+    if (!errorMsg) {
+        errorMsg = document.createElement("p");
+        errorMsg.className = "station-error-message text-red-500 text-xs mt-1 ml-1 font-bold flex items-center gap-1";
+        // errorMsg.innerHTML = `<span>⚠️</span> ${message}`; 
+        // アイコンはCSSで装飾もできるがシンプルに
+        parent.appendChild(errorMsg);
+    }
+    errorMsg.textContent = "⚠️ " + message;
+    
+    input.classList.add("border-red-500", "focus:ring-red-200");
+    input.classList.remove("focus:ring-slate-400", "border-slate-200");
+}
+
+function clearError(input) {
+    const parent = input.parentElement.parentElement;
+    const errorMsg = parent.querySelector(".station-error-message");
+    if (errorMsg) {
+        errorMsg.remove();
+    }
+    
+    input.classList.remove("border-red-500", "focus:ring-red-200");
+    input.classList.add("border-slate-200", "focus:ring-slate-400");
+    
+    if (validationTimers.has(input)) {
+        clearTimeout(validationTimers.get(input));
+        validationTimers.delete(input);
+    }
 }
 
 
