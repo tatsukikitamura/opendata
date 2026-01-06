@@ -522,16 +522,14 @@ function renderAIDiagnosis(container, result) {
     const lines = diagnosis.split('\n').filter(l => l.trim());
 
     container.innerHTML = `
-        <div class="bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 rounded-xl p-5">
-            <div class="flex items-center gap-2 mb-4">
-                <span class="text-2xl">✨</span>
-                <span class="font-bold text-purple-800">AI診断結果</span>
-                <span class="ml-auto text-xs text-purple-400">${result.model || 'AI'}</span>
+        <div class="mt-4 px-1">
+            <div class="flex items-center gap-2 mb-3 pb-2 border-b border-slate-100">
+                <span class="text-lg">✨</span>
+                <span class="font-bold text-slate-700">AIアドバイス</span>
+                <span class="ml-auto text-xs text-slate-400">${result.model || 'AI'}</span>
             </div>
-            <div class="prose prose-sm prose-purple max-w-none">
-                <div class="text-slate-700 space-y-2 whitespace-pre-wrap leading-relaxed">
-                    ${formatDiagnosisText(diagnosis)}
-                </div>
+            <div class="prose prose-sm max-w-none text-slate-600">
+                 ${formatDiagnosisText(diagnosis)}
             </div>
         </div>
     `;
@@ -540,11 +538,11 @@ function renderAIDiagnosis(container, result) {
 function formatDiagnosisText(text) {
     // Convert markdown-like formatting to HTML
     return text
-        .replace(/^### (.+)$/gm, '<h4 class="font-bold text-purple-800 mt-3 mb-1">$1</h4>')
-        .replace(/^## (.+)$/gm, '<h3 class="font-bold text-purple-900 mt-4 mb-2">$1</h3>')
-        .replace(/^# (.+)$/gm, '<h2 class="font-bold text-purple-900 text-lg mt-4 mb-2">$1</h2>')
-        .replace(/^\d+\. (.+)$/gm, '<p class="font-semibold text-slate-800">$1</p>')
-        .replace(/^[-•] (.+)$/gm, '<p class="pl-4 text-slate-600 before:content-[\"•\"] before:mr-2 before:text-purple-400">$1</p>')
-        .replace(/\*\*(.+?)\*\*/g, '<strong class="text-purple-700">$1</strong>')
+        .replace(/^### (.+)(?:\n|$)/gm, '<h4 class="font-bold text-slate-800 mt-3 mb-1">$1</h4>')
+        .replace(/^## (.+)(?:\n|$)/gm, '<h3 class="font-bold text-slate-900 mt-4 mb-2">$1</h3>')
+        .replace(/^# (.+)(?:\n|$)/gm, '<h2 class="font-bold text-slate-900 text-lg mt-4 mb-2">$1</h2>')
+        .replace(/^\d+\. (.+)(?:\n|$)/gm, '<p class="font-semibold text-slate-800">$1</p>')
+        .replace(/^[-•] (.+)(?:\n|$)/gm, '<p class="pl-4 text-slate-700 before:content-[\"•\"] before:mr-2 before:text-slate-400">$1</p>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong class="text-slate-800">$1</strong>')
         .replace(/\n/g, '<br>');
 }

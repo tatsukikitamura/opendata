@@ -77,18 +77,77 @@ def calculate_route_scores(route: dict, all_routes: list) -> dict:
         scores["speed"] = 0.0
 
     # 2. Comfort Score
-    # Based on crowd.score (average daily volume)
-    # 0 -> 5.0
-    # 200,000 -> 1.0 (Very crowded)
-    crowd = route.get("crowd", {})
-    volume = crowd.get("score", 0)
+    # Hybrid Approach:
+    # - Base: Absolute score based on volume (50000 -> 5.0, 250000 -> 1.0)
+    # - If candidates >= 3: Calculate T-score (Deviation) and blend with Base
     
-    # Linear scaling: 5.0 - (volume / 50000)
-    # 50k -> 4.0
-    # 100k -> 3.0
-    # 200k -> 1.0
-    comfort = 5.0 - (volume / 50000.0)
-    scores["comfort"] = round(max(1.0, min(5.0, comfort)), 1)
+    # 2a. Calculate Base Absolute Score for all routes first
+    base_comfort_scores = []
+    
+    for r in all_routes:
+        crowd = r.get("crowd", {})
+        volume = crowd.get("score", 0)
+        
+        # Absolute Logic
+        # 0 - 50,000 -> 5.0 (Very Good)
+        # 250,000 -> 1.0 (Very Bad)
+        # Linear scaling
+        if volume <= 50000:
+            base_score = 5.0
+        else:
+            # Scale 50k - 250k to 5.0 - 1.0
+            # 5.0 - ((vol - 50000) / 200000 * 4.0)
+            base_score = 5.0 - ((volume - 50000) / 200000.0 * 4.0)
+            
+        base_comfort_scores.append(max(1.0, min(5.0, base_score)))
+
+    # Find my index
+    my_index = 0
+    try:
+        # Assuming all_routes is the same list object passed in, 
+        # but to be safe, find by identity or some unique property if possible.
+        # For now, simplistic approach: match by route object identity if possible,
+        # or just re-calculate my specific base score.
+        my_crowd = route.get("crowd", {})
+        my_volume = my_crowd.get("score", 0)
+        
+        if my_volume <= 50000:
+            my_base_score = 5.0
+        else:
+            my_base_score = 5.0 - ((my_volume - 50000) / 200000.0 * 4.0)
+        my_base_score = max(1.0, min(5.0, my_base_score))
+        
+    except:
+        my_base_score = 3.0 # Fallback
+
+    # 2b. Apply Hybrid Logic
+    if len(base_comfort_scores) >= 3:
+        # Calculate Deviation (T-score)
+        import statistics
+        try:
+            mean = statistics.mean(base_comfort_scores)
+            stdev = statistics.stdev(base_comfort_scores)
+            
+            if stdev > 0:
+                # T-score = 50 + 10 * (X - Mean) / SD
+                # We want higher score = better
+                t_score = 50 + 10 * (my_base_score - mean) / stdev
+                
+                # Map T-score to 1.0 - 5.0
+                # T=50 (Mean) -> 3.0
+                rel_score = 3.0 + (t_score - 50) / 10.0
+                rel_score = max(1.0, min(5.0, rel_score))
+                
+                # Use Pure Relative Score as requested (Average = 3)
+                scores["comfort"] = round(rel_score, 1)
+            else:
+                # All scores identical -> Average is 3.0
+                scores["comfort"] = 3.0
+        except:
+             scores["comfort"] = 3.0
+    else:
+        # Few candidates, trust absolute score
+        scores["comfort"] = round(my_base_score, 1)
     
     # 3. Reliability Score
     # Based on risk.score (number of delayed trains/incidents)
