@@ -1,49 +1,47 @@
 # プロジェクト戦略とアーキテクチャの決定事項
 
 ## 1. 範囲（スコープ）の戦略
-- **初期ターゲット**: **JR東日本** の路線のみに絞る。
-  - *理由*: 複数の鉄道事業者のデータを統合する複雑さを避けるため。また、JR東日本は東京で最も網羅的でデータも充実しているため。
-- **将来的な拡張**: パイプラインが安定した後、他の事業者（東京メトロ、都営地下鉄など）を追加する。
+- **拡大ターゲット**: **JR東日本 + 東京メトロ + 都営地下鉄**
+  - *現状*: JR東日本はODPT API、地下鉄はGTFSデータを活用して統合済み。
+  - *理由*: 都内の主要な移動を網羅するため、地下鉄の統合が必須であったため。
+- **将来的な拡張**: 私鉄各社（東急、小田急、京王など）の追加。
 
 ## 2. 経路探索（ナビゲーション）のアーキテクチャ
 - **決定事項**: **ODPTデータに基づく独自のグラフ探索エンジン（Dijkstra法）を実装する。**
 - **アプローチ**: `route_graph.py` にてグラフネットワークを構築し、Dijkstra法で最短経路・乗り換え経路を探索する。
-  - *理由（方針転換）*:
-    - 外部APIへの依存（コスト・回数制限）を排除し、開発中の自由なテストを可能にするため。
-    - ODPTデータ（駅・路線・時刻表）の構造を深く理解し、将来的に「遅延リスク」をグラフの重みとしてダイレクトに組み込むため。
   - *実装済*:
     - 駅・路線データのグラフ化（`Station` ノード / `Ride`・`Transfer` エッジ）。
     - 実際の時刻表データ (`StationDeparture`) と連携した「時刻表ベースのユニークな経路探索」。
-- **外部API**: 原則としてデータソース（ODPT）としてのみ利用し、ロジックは内部で完結させる。
+- **外部API**: データソースとして利用し、ロジックは内部で計算。
 
-## 3. アプリの提供価値（リスクエンジン）
-- **独自の強み**: 「時間予測」ではなく**「信頼性（遅延リスク）の予測」**。
+## 3. アプリの提供価値（リスク＆AIエンジン）
+- **Core Value**: **「予測型」リスク管理と「AIコンシェルジュ」による定性診断**。
 - **ワークフロー**:
-  1. **ユーザー入力**: 出発駅、到着駅。
-  2. **ステップ 1（外部依存）**: 経路候補を取得（例：ルート1は中央線、ルート2は総武線）。
-  3. **ステップ 2（内部処理 - 独自ロジック）**:
-     - 取得した経路の各区間について、独自のリスクデータベースを照会。
-     - 過去のデータに基づき、各ルートの「遅延確率」を算出。
-  4. **出力**: 「安全性・確実性」でソートまたは警告付きでルートを提示。
-     - 「ルート1は早いが（20分）、**高リスク**（遅延確率 80%）。」
-     - 「ルート2は遅いが（25分）、**低リスク**（遅延確率 5%）。」
+  1. **ユーザー入力**: 出発駅、到着駅、時刻。
+  2. **経路探索**: 最短・最適経路を計算。
+  3. **リスク評価 (Predictive Risk)**:
+     - 過去の遅延統計データとリアルタイム情報を照合。
+     - 「通常運行だが、統計的に遅延確率が高い」といった隠れたリスクを検出。
+  4. **AI診断 (Qualitative Diagnosis)**:
+     - OpenAI APIを用いて、経路の混雑度・イベント情報・リスクレベルを総合的に分析。
+     - 「この経路は混むので避けたほうがいい」「雨予報なので乗り換えの少ないこちらがおすすめ」といった人間味のあるアドバイスを提供。
 
 ## 4. 技術スタック・バージョン (実績)
 
 ### Frontend
-- **Framework**: Vite v7 + Vanilla JS (ESModules)
+- **Framework**: Vite v6 + Vanilla JS (ESModules)
 - **Styling**: TailwindCSS **v4**
-  - `@tailwindcss/vite`: ^4.1.18
-  - `tailwindcss`: ^4.1.18
-- **Design**: Premium UI/UX (Glassmorphism, Dynamic Animations)
+- **Font**: Sora (English/Numbers) + Noto Sans JP (Japanese)
+- **Design**: "Modern Professional" - Clean, Card-based, Risk-aware coloring.
 
 ### Backend
-- **Language**: Python 3.14
-- **Framework**: FastAPI (0.128.0)
+- **Language**: Python 3.12
+- **Framework**: FastAPI (0.109+)
 - **Database**:
-  - **ORM**: SQLAlchemy (2.0.45)
-  - **DB**: SQLite (Proto) / PostgreSQL (Future)
-- **Key Libraries**:
-  - `gtfs-realtime-bindings` (2.0.0): GTFS-RTデータ処理
-  - `apscheduler` / `GitHub Actions`: 定期実行インフラ
-- **データソース**: ODPT API (GTFS-RT & Static)
+  - **ORM**: SQLAlchemy (2.0+)
+  - **DB**: SQLite (Production-ready for prototype)
+- **AI Integration**: OpenAI API (GPT-4o/mini)
+- **Data Processing**:
+  - `pandas`: データ分析・統計処理
+  - `gtfs-realtime-bindings`: GTFS-RTデータ処理
+  - `apscheduler`: 定期タスク実行

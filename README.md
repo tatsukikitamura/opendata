@@ -1,90 +1,103 @@
-# 乗換案内 - 遅延リスク分析
+# Transit AI - Predictive Risk & Concierge
+(旧: 乗換案内 - 遅延リスク分析)
 
 公共交通オープンデータチャレンジ2025 プロトタイプ
 
 ## 概要
 
-過去の遅延実績データに基づいて、経路の遅延リスクを予測する乗換案内アプリケーションです。
+**「ただの時刻表検索」ではありません。**
+過去の膨大な運行データを分析し、「その列車がどれくらいの確率で遅れるか」を予測する**Predictive Risk（予測型リスク）エンジン**と、生成AIによる**定性的な移動診断**を組み合わせた、次世代の乗換案内アプリケーションです。
 
-### 主な機能
+### 🚀 主な差別化機能
 
-- 🚃 **時刻表ベースのルート検索** - ODPT APIの時刻表データを使用
-- 📊 **遅延リスク分析** - 過去の遅延データから路線ごとのリスクを算出
-- 🎪 **イベント会場警告** - 経路上の大規模イベント会場を通知
-- 👥 **混雑度予測** - 駅の乗降客数データから混雑レベルを推定
+#### 1. 📊 Predictive Risk Analysis (予測型遅延リスク)
+現在遅れていなくても、「過去の統計的にこの時間のこの路線は20%の確率で遅延する」といった**潜在的なリスク**を可視化します。
+- **High Risk (赤)**: 遅延確率が高い、または現在遅延中。
+- **Medium Risk (黄)**: 注意が必要。
+- **Low Risk (緑)**: 平常運行かつ統計的にも安定。
+
+#### 2. 🤖 AI Concierge (AI移動診断)
+OpenAI APIを活用し、単なるデータだけでなく「コンシェルジュのようなアドバイス」を提供します。
+- 「このルートは乗り換えが複雑で混雑しやすいため、荷物が多い場合は別ルートが推奨です」
+- 「今日は近くでイベントがあるため、早めの移動をお勧めします」
+といった、文脈を理解したサジェストを行います。
+
+#### 3. 🎨 Modern & Intuitive UI
+- **Sora Font** を採用した視認性の高いタイポグラフィ。
+- リスクレベルに応じてUI全体のトーン（背景色など）が直感的に変化。
+- 3軸スコア（速さ・快適・安定）による多角的なルート評価。
+
+---
 
 ## 技術スタック
 
 ### Backend
-- **FastAPI** - Python製の高速Webフレームワーク
-- **SQLite** - 時刻表・遅延データの永続化
-- **SQLAlchemy** - ORM
+- **Python 3.12** / **FastAPI**
+- **SQLite + SQLAlchemy**: グラフデータと統計データの高速処理
+- **OpenAI API**: GPT-4o-mini による診断
+- **ODPT API & GTFS**: JR東日本、東京メトロ、都営地下鉄のデータを統合
 
 ### Frontend
-- **Vite** - 高速なビルドツール
-- **Vanilla JavaScript** - フレームワークなし
-- **Tailwind CSS v4** - ユーティリティファーストCSS
+- **Vite** / **Vanilla JS** (No Framework overhead)
+- **Tailwind CSS v4**: 最新のスタイリングエンジン
+- **Design System**: Glassmorphism, Adaptive Colors
+
+---
+
+## セットアップ (開発者向け)
+
+### 1. 前提条件
+- Python 3.12+
+- Node.js 18+
+- ODPT API Access Token
+- OpenAI API Key
+
+### 2. Backend Setup
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# 環境変数の設定
+cp .env.example .env
+# .env を編集して ODPT_API_TOKEN と OPENAI_API_KEY を設定してください
+```
+
+### 3. Data Import
+初回起動時はデータの取得とデータベース構築が必要です。
+```bash
+# データの取得とDB構築（数分かかります）
+python scripts/setup_database.py
+```
+
+### 4. Start Server
+```bash
+uvicorn main:app --reload
+```
+
+### 5. Frontend Setup
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
 ## ディレクトリ構成
-
 ```
 .
 ├── backend/
-│   ├── main.py              # FastAPIエントリーポイント
-│   ├── routers/             # APIエンドポイント
-│   │   ├── search.py        # ルート検索API
-│   │   └── stations.py      # 駅オートコンプリートAPI
-│   ├── services/            # ビジネスロジック
-│   │   ├── routing.py       # グラフベースの経路探索
-│   │   ├── timetable/       # 時刻表検索
-│   │   ├── risk.py          # 遅延リスク計算
-│   │   └── venue.py         # イベント会場警告
-│   ├── db/                  # データベース設定・モデル
-│   ├── scripts/             # データ取得・インポートスクリプト
-│   └── data/                # 静的データ（GTFSなど）
+│   ├── main.py              # Entry point
+│   ├── routers/             # API Endpoints (AI, Search, Stations)
+│   ├── services/            # Core Logic (Risk, Routing, Venue)
+│   └── data/                # Raw Data & SQLite DB
 │
-├── frontend/
-│   ├── index.html           # ホームページ
-│   ├── detail.html          # 検索結果・詳細ページ
-│   ├── style.css            # グローバルスタイル
-│   └── src/
-│       ├── pages/           # ページロジック
-│       ├── components/      # UIコンポーネント
-│       └── lib/             # ユーティリティ
-│
-└── .github/
-    └── workflows/
-        └── collect_delays.yml  # 遅延データ定期収集
+└── frontend/
+    ├── src/
+    │   ├── components/      # UI Components (Timeline, Risk Cards)
+    │   └── pages/           # Page Logic
+    └── index.html
 ```
 
-## API
-
-### `GET /search`
-
-ルート検索
-
-| パラメータ | 説明 |
-|-----------|------|
-| `from_station` | 出発駅（日本語） |
-| `to_station` | 到着駅（日本語） |
-| `time` | 出発時刻（HH:MM） |
-
-### `GET /stations/autocomplete`
-
-駅名オートコンプリート
-
-| パラメータ | 説明 |
-|-----------|------|
-| `q` | 検索クエリ |
-
-## データソース
-
-- [公共交通オープンデータセンター (ODPT)](https://developer.odpt.org/)
-  - JR東日本 時刻表
-  - 東京メトロ GTFS
-  - 都営地下鉄
-- 遅延データ: GitHub Actions による定期収集
-
 ## ライセンス
-
 MIT License

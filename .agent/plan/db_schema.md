@@ -6,26 +6,28 @@
 erDiagram
     StationDeparture {
         int id PK
-        string station_name "駅名"
+        string station_id "駅ID"
         string railway_id "路線ID"
         string direction "方向"
-        string departure_time "出発時刻/到着時刻"
+        string departure_time "出発時刻"
         string train_number "列車番号"
-        string destination_station "行き先"
+        string weekday_type "曜日区分"
     }
 
-    StationInterval {
+    TrainStatus {
         int id PK
-        string from_station "出発駅"
-        string to_station "到着駅"
-        float travel_time "平均所要時間(分)"
-    }
-
-    StationOrder {
-        int id PK
+        string timestamp "取得日時"
         string railway_id "路線ID"
-        string station_name "駅名"
-        int station_index "駅順序"
+        string status "運行状況"
+        boolean is_delayed "遅延フラグ"
+    }
+
+    Station {
+        string id PK
+        string name_ja "駅名(日)"
+        string name_en "駅名(英)"
+        float lat "緯度"
+        float lon "経度"
     }
 ```
 
@@ -34,73 +36,66 @@ erDiagram
 ## テーブル詳細
 
 ### 1. `station_departures` (時刻表データ)
-列車の発着情報を格納。経路探索の核となるデータ。
-`fetch_timetables.py` により `odpt:TrainTimetable` から生成される。
+列車の発着情報を格納。時刻表ベースの経路探索に使用。
 
 | カラム | 型 | 説明 | 備考 |
 |---|---|---|---|
 | id | Integer | PK | |
 | station_id | String | 駅ID | `odpt.Station:JR-East.Chuo.Tokyo` |
-| station_name | String | 駅名 | `Tokyo` |
-| railway_id | String | 路線ID | `odpt.Railway:JR-East.Chuo` |
+| station_name | String | 駅名 | |
+| railway_id | String | 路線ID | |
 | direction | String | 方面 | `Outbound` / `Inbound` |
-| departure_time | String | 時刻 | `HH:MM` 形式 (終着駅は到着時刻) |
-| train_type | String | 列車種別 | `Rapid`, `Local` 等 |
-| destination_station | String | 行き先駅名 | |
-| train_number | String | 列車番号 | `1234F` |
+| departure_time | String | 時刻 | `HH:MM` |
+| train_type | String | 列車種別 | |
+| destination_station | String | 行き先 | |
+| train_number | String | 列車番号 | |
 | weekday_type | String | 曜日区分 | `Weekday`, `Saturday`, `Holiday` |
 
-**インデックス**:
-- `(station_name, direction, departure_time)`: 経路探索の列車検索用
+### 2. `train_statuses` (運行情報履歴)
+odpt:TrainInformation から取得した運行情報の履歴。遅延リスク分析の基礎データ。
 
----
+| カラム | 型 | 説明 | 備考 |
+|---|---|---|---|
+| id | Integer | PK | |
+| timestamp | String | 取得日時 | ISO 8601 (JST) |
+| railway_id | String | 路線ID | |
+| railway_name | String | 路線名 | `中央線快速` など |
+| operator | String | 事業者ID | |
+| status | String | 状況 | `平常運転`, `遅延` など |
+| status_text | String | 詳細テキスト | 遅延理由など |
+| is_delayed | Boolean | 遅延フラグ | 平常運転以外はTrue |
 
-### 2. `station_intervals` (駅間所要時間)
-隣接する駅間の平均所要時間を格納。グラフのエッジ重みとして使用。
-`extract_travel_times.py` により実績ダイヤから算出される。
+### 3. `stations` (統合駅マスタ)
+JR、メトロ、都営の全駅を統合したマスタデータ。
+
+| カラム | 型 | 説明 | 備考 |
+|---|---|---|---|
+| id | String | PK (駅ID) | |
+| name_ja | String | 駅名(日本語) | |
+| name_en | String | 駅名(英語) | |
+| railway_id | String | 所属路線ID | |
+| station_code | String | 駅ナンバリング | `M17` など |
+| lat, lon | Float | 座標 | |
+
+### 4. `railways` (統合路線マスタ)
+
+| カラム | 型 | 説明 | 備考 |
+|---|---|---|---|
+| id | String | PK (路線ID) | |
+| name_ja | String | 路線名(日本語) | |
+| operator_id | String | 事業者ID | |
+
+### 5. `route_edges` (経路グラフエッジ)
+計算済みの駅間接続データ。
 
 | カラム | 型 | 説明 | 備考 |
 |---|---|---|---|
 | id | Integer | PK | |
 | from_station_id | String | 出発駅ID | |
 | to_station_id | String | 到着駅ID | |
-| from_station | String | 出発駅名 | |
-| to_station | String | 到着駅名 | |
-| travel_time | Float | 所要時間(分) | 0時またぎを考慮した平均値 |
-| railway_id | String | 路線ID | |
+| time_minutes | Float | 所要時間(分) | |
+| type | String | エッジタイプ | `ride` (乗車) or `transfer` (乗換) |
 
----
-
-### 3. `station_orders` (駅順序マスタ)
-路線の駅順序情報。方向判定（上り/下り）に使用。
-`fetch_station_order.py` により生成。
-
-| カラム | 型 | 説明 | 備考 |
-|---|---|---|---|
-| id | Integer | PK | |
-| railway_id | String | 路線ID | |
-| station_id | String | 駅ID | |
-| station_name | String | 駅名 | |
-| station_index | Integer | 順序 | 1からの連番 |
-
-**特記ロジック**:
-- 山手線などの環状線は、インデックス差分と閾値を比較して時計回り/反時計回りを判定する。
-
----
-
-### 4. `delay_logs` (遅延ログ)
-GTFS-RTから収集したリアルタイム遅延情報の履歴。
-`import_delays.py` により JSONL ファイルからインポートされる。
-
-| カラム | 型 | 説明 | 備考 |
-|---|---|---|---|
-| id | Integer | PK | |
-| timestamp | String | 取得日時 | ISO 8601 形式 (`YYYY-MM-DDTHH:MM:SS...`) |
-| trip_id | String | 列車ID | 末尾の文字で路線を判別可能 (例: `...T`=中央線快速) |
-| route_id | String | 路線ID | (GTFS上は空の場合が多い) |
-| max_delay | Integer | 最大遅延(秒) | |
-| vehicle_id | String | 車両ID | |
-
-**備考**:
-- `trip_id` のサフィックスを利用して路線ごとの遅延を集計・分析する。
-
+### 6. Others
+- `station_orders`: 方面判定用の駅順序データ
+- `station_intervals`: 実績ダイヤに基づく駅間所要時間

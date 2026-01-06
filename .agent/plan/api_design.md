@@ -1,73 +1,95 @@
 # API設計仕様
 
-## ベースURL
+## Base URL
 `http://localhost:8000`
 
 ---
 
-## 経路探索 API
+## 1. Route Search API
 
-### 1. 時刻表付き経路検索
-実際の時刻表データに基づき、乗り換え待ち時間を含めた正確な行程を算出する。
+### `GET /search`
+出発駅・到着駅・時刻を指定して、リスク分析済みの経路を検索します。
 
-- **URL**: `/search_with_times`
-- **Method**: `GET`
+**Parameters:**
+- `from_station`: 出発駅名 (例: `東京`)
+- `to_station`: 到着駅名 (例: `高尾`)
+- `time`: 出発時刻 `HH:MM` (例: `10:00`)
 
-**パラメータ**:
-| 名前 | 必須 | 説明 | 例 |
-|---|---|---|---|
-| from_station | Yes | 出発駅名 | `東京` |
-| to_station | Yes | 到着駅名 | `新宿` |
-| time | Yes | 出発希望時刻 | `10:00` |
-
-**レスポンス**:
+**Response:**
 ```json
 {
-  "from": "東京",
-  "to": "新宿",
-  "theoretical_time": 15.0,  // 合計所要時間（分）
-  "transfers": 1,            // 乗換回数
-  "requested_departure": "10:00",
-  "segments": [              // 行程セグメントのリスト
+  "routes": [
     {
-      "from": "東京",
-      "to": "御茶ノ水",
-      "railway": "中央線快速",
-      "departure_time": "10:05", // 発車時刻
-      "arrival_time": "10:09",   // 到着時刻
-      "train_type": "Rapid",
-      "destination": "Takao",
-      "train_number": "1034T"
-    },
-    {
-      "from": "御茶ノ水",
-      "to": "新宿",
-      "railway": "中央・総武各駅停車",
-      "departure_time": "10:15",
-      "arrival_time": "10:20",
-      "train_type": "Local",
-      ...
+      "segments": [
+        {
+          "railway": "中央線快速",
+          "from": "東京",
+          "to": "新宿",
+          "departure_time": "10:00",
+          "arrival_time": "10:14"
+        }
+      ],
+      "transfers": 0,
+      "risk": {
+        "level": "HIGH", // HIGH, MEDIUM, LOW
+        "score": 12.5,   // 遅延確率(%)
+        "reasons": [
+          {
+            "railway": "ChuoRapid",
+            "display": "ChuoRapid: 12.5%の遅延リスク"
+          }
+        ]
+      },
+      "crowd": {
+        "level": "HIGH",
+        "score": 450000,
+        "details": ["新宿(極めて混雑)"]
+      },
+      "scores": {
+        "speed": 4.5,      // 5段階評価
+        "comfort": 2.0,
+        "reliability": 1.5
+      },
+      "delay_warnings": [], // リアルタイム遅延情報
+      "venue_warnings": {   // イベント会場情報
+        "transfer_warnings": [],
+        "passing_info": []
+      }
     }
   ]
 }
 ```
 
-**エラーレスポンス**:
-- `404 Not Found`: 駅が見つからない場合
-- `400 Bad Request`: ルートが見つからない、または入力不正
+---
+
+## 2. AI Diagnosis API
+
+### `POST /ai/diagnose`
+経路情報を受け取り、OpenAI APIを使用して定性的なアドバイスと診断を行います。
+
+**Request Body:**
+```json
+{
+  "segments": [...],     // /search のレスポンスと同じ
+  "risk": {...},         // /search のレスポンスと同じ
+  "crowd": {...},
+  "venue_warnings": {...},
+  "delay_warnings": [...]
+}
+```
+
+**Response:**
+```json
+{
+  "diagnosis": "⚠️ 警告モード ⚠️\nこのルートは中央線快速の遅延リスクが高いため注意が必要です...",
+  "model": "gpt-4o-mini"
+}
+```
 
 ---
 
-### 2. 単純経路検索 (Legacy)
-時刻表を使わず、グラフ構造のみで理論上の最短経路を検索する（デバッグ用）。
+## 3. Utility API
 
-- **URL**: `/search`
-- **Method**: `GET`
-- **パラメータ**: `from_station`, `to_station`
-
----
-
-## その他 API
-
-### 駅情報
-- `GET /stations`: 登録されている駅一覧を返す（オートコンプリート用などを想定）
+### `GET /stations`
+駅名オートコンプリート用の駅一覧を返します。
+- **Response**: `["東京", "新宿", "高尾", ...]`
