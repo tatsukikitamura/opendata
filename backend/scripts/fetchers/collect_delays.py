@@ -12,6 +12,18 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 from google.transit import gtfs_realtime_pb2
+import sys
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+# Add backend directory to path to import models
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
+
+try:
+    from db.models import TrainStatus
+except ImportError:
+    # Fallback or better error handling if path is wrong
+    print("Warning: Could not import db.models. DB functions will fail.")
 
 # Load .env from project root
 load_dotenv(Path(__file__).resolve().parent.parent.parent.parent / ".env")
@@ -315,7 +327,54 @@ def save_jsonl(records: list):
     delayed_count = sum(1 for r in records if r["is_delayed"])
     print(f"Saved {len(records)} records ({delayed_count} delayed) to {filename}")
 
+    print(f"Saved {len(records)} records ({delayed_count} delayed) to {filename}")
 
+
+def save_to_db(records: list):
+    """
+    Save records to PostgreSQL database.
+    """
+    database_url = os.environ.get("DATABASE_URL")
+    if not database_url:
+        print("DATABASE_URL not set. Skipping DB insertion.")
+        return
+
+    if not records:
+        return
+
+    # Handle 'postgres://' for SQLAlchemy compatibility (Fly.io/Heroku style, just in case)
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+
+    print(f"Connecting to DB...")
+    
+    try:
+        engine = create_engine(database_url)
+        Session = sessionmaker(bind=engine)
+        session = Session()
+        
+        count = 0
+        for r in records:
+            # Create TrainStatus object
+            status = TrainStatus(
+                timestamp=r["timestamp"],
+                railway_id=r["railway_id"],
+                railway_name=r["railway_name"],
+                operator=r["operator"],
+                status=r["status"],
+                status_text=r["status_text"],
+                is_delayed=r["is_delayed"]
+            )
+            session.add(status)
+            count += 1
+        
+        session.commit()
+        print(f"Successfully inserted {count} records to DB.")
+    except Exception as e:
+        print(f"Failed to insert to DB: {e}")
+    finally:
+        if 'session' in locals():
+            session.close()
 # =============================================================================
 # Main
 # =============================================================================
@@ -376,5 +435,6 @@ if __name__ == "__main__":
             pass
 
     save_jsonl(all_records)
+    save_to_db(all_records)
     
     print("Done.")

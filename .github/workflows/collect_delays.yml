@@ -23,7 +23,7 @@ jobs:
       
       - name: Install dependencies
         run: |
-          pip install requests python-dotenv tzdata gtfs-realtime-bindings protobuf
+          pip install requests python-dotenv tzdata gtfs-realtime-bindings protobuf sqlalchemy psycopg2-binary
 
       - name: Fetch TrainInformation and save
         env:
