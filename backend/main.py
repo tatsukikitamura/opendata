@@ -20,10 +20,23 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+import os
+
 # CORS configuration
+# origins_str = os.getenv("ALLOWED_ORIGINS", "*")
+# origins = [origin.strip() for origin in origins_str.split(",") if origin.strip()]
+
+# For safety, default to "*" (allow all) only if explicitly set or if ALLOWED_ORIGINS is missing/empty in dev.
+# In production, ALLOWED_ORIGINS should be set to "https://<user>.github.io".
+allowed_origins_env = os.getenv("ALLOWED_ORIGINS")
+if allowed_origins_env:
+    origins = [origin.strip() for origin in allowed_origins_env.split(",") if origin.strip()]
+else:
+    origins = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

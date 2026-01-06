@@ -6,12 +6,21 @@ import os
 
 # Build path relative to this file's location to ensure consistency
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-# The DB is located in the backend root (one level up from db package)
-DB_PATH = os.path.join(BASE_DIR, "..", "data.db")
-SQLALCHEMY_DATABASE_URL = f"sqlite:///{DB_PATH}"
+
+# Priority: Environment Variable > Local SQLite
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
+
+if not SQLALCHEMY_DATABASE_URL:
+    # The DB is located in the backend root (one level up from db package)
+    DB_PATH = os.path.join(BASE_DIR, "..", "data.db")
+    SQLALCHEMY_DATABASE_URL = f"sqlite:///{DB_PATH}"
+
+connect_args = {}
+if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
+    connect_args = {"check_same_thread": False}
 
 engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+    SQLALCHEMY_DATABASE_URL, connect_args=connect_args
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
