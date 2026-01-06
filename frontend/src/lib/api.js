@@ -2,29 +2,6 @@
 const API_BASE = "http://127.0.0.1:8000";
 
 /**
- * Find best route with actual train times.
- * @param {string} from - Departure station
- * @param {string} to - Arrival station
- * @param {string} time - Departure time (HH:MM)
- * @param {number} transferBuffer - Transfer buffer in minutes (optional)
- * @returns {Promise<Object>} Route result
- */
-export async function searchRouteWithTimes(from, to, time, transferBuffer = 0) {
-    try {
-        let url = `${API_BASE}/search_with_times?from_station=${encodeURIComponent(from)}&to_station=${encodeURIComponent(to)}&time=${encodeURIComponent(time)}`;
-        if (transferBuffer > 0) {
-            url += `&transfer_buffer=${transferBuffer}`;
-        }
-        const res = await fetch(url);
-        const data = await res.json();
-        return data;
-    } catch (e) {
-        console.error("API Error:", e);
-        throw new Error("サーバーに接続できませんでした。");
-    }
-}
-
-/**
  * Verify backend connection.
  * @returns {Promise<boolean>}
  */
@@ -67,5 +44,38 @@ export async function getStations() {
     } catch (e) {
         console.error("API Error:", e);
         return [];
+    }
+}
+
+/**
+ * Get AI diagnosis for a route.
+ * @param {Object} routeData - Route data including segments, risk, crowd, etc.
+ * @returns {Promise<Object>} AI diagnosis result
+ */
+export async function diagnoseRoute(routeData) {
+    try {
+        const res = await fetch(`${API_BASE}/diagnose`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                segments: routeData.segments || [],
+                risk: routeData.risk || null,
+                crowd: routeData.crowd || null,
+                venue_warnings: routeData.venue_warnings || null,
+                delay_warnings: routeData.delay_warnings || null
+            })
+        });
+        
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.detail || 'AI診断に失敗しました');
+        }
+        
+        return await res.json();
+    } catch (e) {
+        console.error("AI Diagnosis Error:", e);
+        throw e;
     }
 }

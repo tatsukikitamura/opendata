@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from db.database import get_db
 from services.routing import get_graph
 from services.timetable.core import search_route_with_times
-from services.risk import get_route_risk
+from services.risk import get_route_risk, get_current_delays
 from services.venue import get_venue_warnings
 from services.score import calculate_route_scores
 from datetime import datetime
@@ -160,6 +160,10 @@ def search_route_api(
     candidates.sort(key=lambda x: x.get("_arrival", "99:99"))
     top_routes = candidates[:5]
     
+    # Get current real-time delays ONCE for all routes
+    current_delays = get_current_delays()
+    current_delay_map = {d["railway_name"]: d for d in current_delays}
+    
     # Clean up internal fields and add delay warnings
     current_date = datetime.now().date().isoformat()
     departure_time_str = f"{current_date}T{search_time}"
@@ -167,18 +171,36 @@ def search_route_api(
     for route in top_routes:
         route.pop("_arrival", None)
         
-        # Add risk score (includes delay reasons)
+        # Add risk score (includes delay reasons from HISTORICAL data)
         risk_data = get_route_risk(route, departure_time_str)
         route["risk"] = risk_data
         
-        # Extract delay warnings from risk reasons for backward compatibility
+        # Get REAL-TIME delay warnings for railways in this route
         delay_warnings = []
-        for reason in risk_data.get("reasons", []):
-            delay_warnings.append({
-                "railway": reason.get("railway", ""),
-                "reason": reason.get("latest_reason", ""),
-                "display": reason.get("display", "")
-            })
+        route_railways = set()
+        
+        # Import mapping for Japanese to English railway names
+        from services.constants import RAILWAY_JA_TO_EN
+        
+        for seg in route.get("segments", []):
+            railway = seg.get("railway", "")
+            if railway:
+                # Normalize railway name - try Japanese to English conversion
+                if railway in RAILWAY_JA_TO_EN:
+                    railway = RAILWAY_JA_TO_EN[railway]
+                elif "." in railway:
+                    railway = railway.split(".")[-1]
+                route_railways.add(railway)
+        
+        for railway_name in route_railways:
+            if railway_name in current_delay_map:
+                delay_info = current_delay_map[railway_name]
+                delay_warnings.append({
+                    "railway": delay_info.get("railway_name", railway_name),
+                    "status": delay_info.get("status", ""),
+                    "reason": delay_info.get("status_text", "遅延情報あり"),
+                    "timestamp": delay_info.get("timestamp", "")
+                })
         route["delay_warnings"] = delay_warnings
         
         # Add Crowd Metrics

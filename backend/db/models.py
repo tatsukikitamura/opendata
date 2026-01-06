@@ -56,3 +56,50 @@ class TrainStatus(Base):
     status_text = Column(String)                  # Detailed description (delay reason, etc.)
     is_delayed = Column(Boolean, default=False, index=True)  # True if not normal operation
 
+
+# =============================================================================
+# Routing Data (Unified Master Data)
+# =============================================================================
+
+class Station(Base):
+    """
+    Unified station master data.
+    Stores stations from all operators (JR, Metro, Toei) in a single table.
+    """
+    __tablename__ = "stations"
+
+    id = Column(String, primary_key=True, index=True)  # e.g., "odpt.Station:JR-East.Chuo.Tokyo"
+    name_ja = Column(String, index=True)
+    name_en = Column(String)
+    railway_id = Column(String, index=True)
+    station_code = Column(String, nullable=True) # e.g., "M17"
+    lat = Column(Float, nullable=True)
+    lon = Column(Float, nullable=True)
+
+class Railway(Base):
+    """
+    Unified railway master data.
+    """
+    __tablename__ = "railways"
+
+    id = Column(String, primary_key=True, index=True) # e.g., "odpt.Railway:JR-East.ChuoRapid"
+    name_ja = Column(String, index=True)
+    name_en = Column(String)
+    operator_id = Column(String, index=True)
+
+class RouteEdge(Base):
+    """
+    Graph edges for routing.
+    Represents a direct connection between two stations.
+    Pre-calculated from timetables or GTFS.
+    """
+    __tablename__ = "route_edges"
+
+    id = Column(Integer, primary_key=True, index=True)
+    from_station_id = Column(String, index=True)
+    to_station_id = Column(String, index=True)
+    time_minutes = Column(Float)  # Cost in minutes
+    railway_id = Column(String, index=True) # Owner of this edge (or None for transfers)
+    type = Column(String, default="ride") # "ride" or "transfer"
+
+

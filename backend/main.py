@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from routers import search, stations
+from routers import search, stations, ai
 from services.routing import initialize_graph
 from db.database import engine
 from db.models import Base
@@ -33,6 +33,8 @@ app.add_middleware(
 app.include_router(search.router, tags=["Search"])
 
 app.include_router(stations.router, tags=["Stations"])
+
+app.include_router(ai.router, tags=["AI"])
 
 
 @app.get("/")

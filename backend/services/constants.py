@@ -1,9 +1,30 @@
+
+import os
+
 """
 Shared constants for backend services.
 
 This module consolidates railway lists, mappings, and other constants
 that are used across multiple services.
 """
+
+# ==============================================================================
+# Operators
+# ==============================================================================
+OPERATOR_JR_EAST = "odpt.Operator:JR-East"
+OPERATOR_TOKYO_METRO = "odpt.Operator:TokyoMetro"
+OPERATOR_TOEI = "odpt.Operator:Toei"
+
+ALL_OPERATORS = [
+    OPERATOR_JR_EAST,
+    OPERATOR_TOKYO_METRO,
+    OPERATOR_TOEI,
+]
+
+# ==============================================================================
+# File Paths
+# ==============================================================================
+TRAVEL_TIMES_FILE = os.path.join(os.path.dirname(__file__), "travel_times.json")
 
 # ==============================================================================
 # JR East Railways
@@ -140,3 +161,39 @@ ROUTE_CODE_TO_DISPLAY_NAME = {
 
 ODPT_BASE_URL = "https://api-challenge.odpt.org/api/v4"
 GTFS_RT_URL = "https://api-challenge.odpt.org/api/v4/gtfs/realtime/jreast_odpt_train_trip_update"
+
+
+# ==============================================================================
+# GTFS Codes & Mappings
+# ==============================================================================
+
+# Metro Line Codes (GTFS prefix to Line Name suffix)
+GTFS_METRO_CODES = {
+    "G": "Ginza", "M": "Marunouchi", "m": "Marunouchi", "H": "Hibiya",
+    "T": "Tozai", "C": "Chiyoda", "Y": "Yurakucho", "Z": "Hanzomon",
+    "N": "Namboku", "F": "Fukutoshin"
+}
+
+# Toei Line Codes
+GTFS_TOEI_CODES = {
+    "A": "Asakusa", "I": "Mita", "S": "Shinjuku", "E": "Oedo"
+}
+
+# Detailed Railway Info (Name mappings for local use)
+METRO_TOEI_RAILWAY_INFO = {
+    # Metro
+    "odpt.Railway:TokyoMetro.Ginza": {"name_ja": "銀座線", "name_en": "Ginza Line"},
+    "odpt.Railway:TokyoMetro.Marunouchi": {"name_ja": "丸ノ内線", "name_en": "Marunouchi Line"},
+    "odpt.Railway:TokyoMetro.Hibiya": {"name_ja": "日比谷線", "name_en": "Hibiya Line"},
+    "odpt.Railway:TokyoMetro.Tozai": {"name_ja": "東西線", "name_en": "Tozai Line"},
+    "odpt.Railway:TokyoMetro.Chiyoda": {"name_ja": "千代田線", "name_en": "Chiyoda Line"},
+    "odpt.Railway:TokyoMetro.Yurakucho": {"name_ja": "有楽町線", "name_en": "Yurakucho Line"},
+    "odpt.Railway:TokyoMetro.Hanzomon": {"name_ja": "半蔵門線", "name_en": "Hanzomon Line"},
+    "odpt.Railway:TokyoMetro.Namboku": {"name_ja": "南北線", "name_en": "Namboku Line"},
+    "odpt.Railway:TokyoMetro.Fukutoshin": {"name_ja": "副都心線", "name_en": "Fukutoshin Line"},
+    # Toei
+    "odpt.Railway:Toei.Asakusa": {"name_ja": "浅草線", "name_en": "Asakusa Line"},
+    "odpt.Railway:Toei.Mita": {"name_ja": "三田線", "name_en": "Mita Line"},
+    "odpt.Railway:Toei.Shinjuku": {"name_ja": "新宿線", "name_en": "Shinjuku Line"},
+    "odpt.Railway:Toei.Oedo": {"name_ja": "大江戸線", "name_en": "Oedo Line"},
+}

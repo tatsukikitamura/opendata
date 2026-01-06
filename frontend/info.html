@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>About - ノー遅延乗り換え</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="bg-slate-50 text-slate-800 font-sans antialiased selection:bg-emerald-500 selection:text-white">
+
+  <!-- Simple Dot Pattern Background -->
+  <div class="min-h-screen p-4 relative"
+       style="background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 24px 24px;">
+
+    <main class="w-full max-w-2xl mx-auto z-10 py-8">
+      
+      <!-- Back Button -->
+      <a href="/" class="inline-flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors mb-8">
+        <span>←</span>
+        <span>検索に戻る</span>
+      </a>
+
+      <!-- Header -->
+      <div class="mb-8">
+        <div class="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold mb-3 border border-emerald-200">
+          <span>🛡️</span>
+          <span>遅延リスク可視化</span>
+        </div>
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900 mb-2">
+          ノー遅延乗り換えについて
+        </h1>
+        <p class="text-slate-500">絶対に遅刻できないあなたのための乗換案内</p>
+      </div>
+
+      <!-- Concept -->
+      <section class="bg-emerald-50 p-6 rounded-2xl shadow-sm border border-emerald-200 mb-6">
+        <h2 class="text-xl font-bold text-emerald-900 mb-4 flex items-center gap-2">
+          <span>💡</span> コンセプト
+        </h2>
+        <p class="text-emerald-800 leading-relaxed">
+          「ノー遅延乗り換え」は、<strong>絶対に遅刻できない人</strong>のために作られた乗換案内サービスです。
+          過去の遅延実績データを分析し、各路線の遅延リスクを可視化。
+          リアルタイム遅延情報と組み合わせて、あなたに最も安全な経路を提案します。
+        </p>
+      </section>
+
+      <!-- App Usage -->
+      <section class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6">
+        <h2 class="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+          <span>📱</span> 使い方
+        </h2>
+        <div class="space-y-4 text-slate-600">
+          <div class="flex gap-3">
+            <span class="shrink-0 w-6 h-6 bg-emerald-600 text-white rounded-full flex items-center justify-center text-sm font-bold">1</span>
+            <div>
+              <p class="font-medium text-slate-800">出発駅・到着駅を入力</p>
+              <p class="text-sm text-slate-500">駅名を入力すると候補が表示されます</p>
+            </div>
+          </div>
+          <div class="flex gap-3">
+            <span class="shrink-0 w-6 h-6 bg-emerald-600 text-white rounded-full flex items-center justify-center text-sm font-bold">2</span>
+            <div>
+              <p class="font-medium text-slate-800">出発時刻を選択</p>
+              <p class="text-sm text-slate-500">クイック設定ボタンで素早く時刻を選べます</p>
+            </div>
+          </div>
+          <div class="flex gap-3">
+            <span class="shrink-0 w-6 h-6 bg-emerald-600 text-white rounded-full flex items-center justify-center text-sm font-bold">3</span>
+            <div>
+              <p class="font-medium text-slate-800">遅延リスクを確認してルートを選択</p>
+              <p class="text-sm text-slate-500">各ルートの遅延リスクと現在の運行状況を確認できます</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Risk Levels -->
+      <section class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6">
+        <h2 class="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+          <span>⚠️</span> 遅延リスクの見方
+        </h2>
+        <div class="space-y-4">
+          <div class="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-xl">✅</span>
+              <span class="font-bold text-emerald-900">低リスク</span>
+            </div>
+            <p class="text-sm text-emerald-800">過去の遅延実績が少なく、安心して利用できる路線です。</p>
+          </div>
+          <div class="p-4 bg-amber-50 rounded-xl border border-amber-100">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-xl">⚠️</span>
+              <span class="font-bold text-amber-900">中リスク</span>
+            </div>
+            <p class="text-sm text-amber-800">一定の遅延実績があります。時間に余裕を持って利用してください。</p>
+          </div>
+          <div class="p-4 bg-red-50 rounded-xl border border-red-100">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-xl">🚨</span>
+              <span class="font-bold text-red-900">高リスク / 現在遅延中</span>
+            </div>
+            <p class="text-sm text-red-800">遅延が頻発する路線、または現在遅延が発生しています。代替ルートを検討してください。</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Data Sources -->
+      <section class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6">
+        <h2 class="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+          <span>📡</span> データソース
+        </h2>
+        <div class="space-y-3 text-slate-600">
+          <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+            <p class="font-medium text-slate-800 mb-1">公共交通オープンデータセンター (ODPT)</p>
+            <p class="text-sm text-slate-500">リアルタイム列車状況、時刻表データ、遅延情報を取得</p>
+            <a href="https://www.odpt.org/" target="_blank" class="text-sm text-emerald-600 hover:underline">https://www.odpt.org/</a>
+          </div>
+          <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+            <p class="font-medium text-slate-800 mb-1">GTFS (General Transit Feed Specification)</p>
+            <p class="text-sm text-slate-500">東京メトロ・都営地下鉄の詳細な時刻表データ</p>
+          </div>
+          <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+            <p class="font-medium text-slate-800 mb-1">遅延実績データ</p>
+            <p class="text-sm text-slate-500">TrainInformation APIから収集した過去の遅延記録</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Contest Info -->
+      <section class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6">
+        <h2 class="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+          <span>🏆</span> 公共交通オープンデータチャレンジ2025
+        </h2>
+        <p class="text-slate-600 mb-4">
+          本アプリケーションは「公共交通オープンデータチャレンジ2025」への応募作品として開発されました。
+        </p>
+        <div class="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
+          <p class="text-sm text-emerald-800">
+            公共交通オープンデータセンターが提供するAPIを活用し、遅延リスクを可視化することで、
+            より確実な移動をサポートする新しい乗換案内サービスを目指しています。
+          </p>
+        </div>
+        <a href="https://challenge2025.odpt.org/" target="_blank" 
+           class="inline-flex items-center gap-2 mt-4 text-emerald-600 hover:underline text-sm">
+          <span>公式サイトを見る</span>
+          <span>↗</span>
+        </a>
+      </section>
+
+      <!-- Tech Stack -->
+      <section class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6">
+        <h2 class="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+          <span>🛠️</span> 技術スタック
+        </h2>
+        <div class="grid grid-cols-2 gap-4">
+          <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+            <p class="font-bold text-slate-800 mb-1">Frontend</p>
+            <ul class="text-sm text-slate-500 space-y-1">
+              <li>• HTML / CSS / JavaScript</li>
+              <li>• TailwindCSS</li>
+              <li>• Vite</li>
+            </ul>
+          </div>
+          <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+            <p class="font-bold text-slate-800 mb-1">Backend</p>
+            <ul class="text-sm text-slate-500 space-y-1">
+              <li>• Python</li>
+              <li>• FastAPI</li>
+              <li>• SQLite</li>
+            </ul>
+          </div>
+          <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+            <p class="font-bold text-slate-800 mb-1">Data</p>
+            <ul class="text-sm text-slate-500 space-y-1">
+              <li>• ODPT API</li>
+              <li>• GTFS</li>
+              <li>• SQLAlchemy</li>
+            </ul>
+          </div>
+          <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+            <p class="font-bold text-slate-800 mb-1">Algorithm</p>
+            <ul class="text-sm text-slate-500 space-y-1">
+              <li>• Dijkstra's Algorithm</li>
+              <li>• Delay Risk Analysis</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <footer class="text-center text-slate-400 text-sm pt-8">
+        <p>© 2025 ノー遅延乗り換え</p>
+      </footer>
+
+    </main>
+  </div>
+
+</body>
+
+</html>

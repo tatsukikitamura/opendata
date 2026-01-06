@@ -1,4 +1,4 @@
-import { searchRoute } from '../lib/api.js';
+import { searchRoute, diagnoseRoute } from '../lib/api.js';
 import { showError, formatDuration } from '../lib/utils.js';
 import { renderTimeline } from '../components/Timeline.js';
 
@@ -22,7 +22,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("route-subheader").textContent = `${time} 以降の電車を検索中...`;
 
     await executeSearch(fromStation, toStation, time);
-    
+
     // Back to list button handler
     document.getElementById("back-to-list").addEventListener("click", () => {
         showListView();
@@ -39,14 +39,14 @@ async function executeSearch(from, to, time) {
         }
 
         allRoutes = data.routes;
-        
+
         // Initial render: show list
         renderRouteList();
-        
+
         document.getElementById("loading-state").classList.add("hidden");
         document.getElementById("result-state").classList.remove("hidden");
         showListView();
-        
+
     } catch (e) {
         if (e.message) showError(e.message);
     }
@@ -67,7 +67,7 @@ function showDetailView(index) {
 function renderRouteList() {
     const container = document.getElementById("route-list-container");
     container.innerHTML = "";
-    
+
     allRoutes.forEach((route, index) => {
         const segments = route.segments || [];
         const firstDeparture = (segments.length > 0 && segments[0].departure_time) ? segments[0].departure_time : "--:--";
@@ -75,10 +75,21 @@ function renderRouteList() {
         const arrival = lastSeg?.arrival_time || "--:--";
         const transfers = route.transfers || 0;
         const risk = route.risk || { level: 'LOW' };
-        const crowd = route.crowd || { level: 'LOW', score: 0 };
-        
+
+        // Calculate travel time
+        let travelTimeText = "";
+        if (firstDeparture !== "--:--" && arrival !== "--:--") {
+            const [depH, depM] = firstDeparture.split(':').map(Number);
+            const [arrH, arrM] = arrival.split(':').map(Number);
+            let totalMinutes = (arrH * 60 + arrM) - (depH * 60 + depM);
+            if (totalMinutes < 0) totalMinutes += 24 * 60; // Handle overnight
+            const hours = Math.floor(totalMinutes / 60);
+            const mins = totalMinutes % 60;
+            travelTimeText = hours > 0 ? `${hours}時間${mins}分` : `${mins}分`;
+        }
+
         const card = document.createElement("div");
-        
+
         // Card styling based on Risk
         let bgClass = "bg-white hover:bg-slate-50 border-slate-200 shadow-sm";
         if (risk.level === 'HIGH') {
@@ -86,9 +97,13 @@ function renderRouteList() {
         } else if (risk.level === 'MEDIUM') {
             bgClass = "bg-amber-50 hover:bg-amber-100 border-amber-200 shadow-sm";
         }
-        
-        card.className = `p-8 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${bgClass}`;
-        
+
+        card.className = `p-8 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${bgClass} focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2`;
+        card.setAttribute('role', 'button');
+        card.setAttribute('tabindex', '0');
+        card.setAttribute('aria-label', `${firstDeparture}発 ${arrival}着 乗換${transfers}回 ${travelTimeText}`);
+
+        // Risk Label
         let riskLabel = "";
         if (risk.level === 'HIGH') {
             riskLabel = `<span class="px-2 py-1 rounded text-xs font-bold bg-red-100 text-red-700 border border-red-200">遅延リスク高</span>`;
@@ -97,22 +112,16 @@ function renderRouteList() {
         } else {
             riskLabel = `<span class="px-2 py-1 rounded text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">平常運行</span>`;
         }
-        
-        // Crowd Label
-        let crowdIcon = "👤";
-        if (crowd.level === 'HIGH') crowdIcon = "👥👥 混雑";
-        else if (crowd.level === 'MEDIUM') crowdIcon = "👥 普通";
-        else crowdIcon = "👤 空き";
-        
+
         card.innerHTML = `
             <div>
                 <div class="flex items-center gap-3 mb-1">
                     <span class="text-2xl font-bold text-slate-800">${arrival} 着</span>
                     <span class="text-sm text-slate-500">(${firstDeparture} 発)</span>
+                    ${travelTimeText ? `<span class="text-sm font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">${travelTimeText}</span>` : ''}
                 </div>
-                <div class="flex items-center gap-4 text-sm text-slate-500 mt-2">
-                    <span>乗換 ${transfers}回</span>
-                    <span class="text-xs border border-slate-300 px-2 py-0.5 rounded-full bg-slate-100">${crowdIcon}</span>
+                <div class="text-sm text-slate-500 mt-2">
+                    乗換 ${transfers}回
                 </div>
             </div>
             <div>
@@ -143,14 +152,27 @@ function renderRouteList() {
             </div>
             <div class="text-right">
                 ${riskLabel}
-                <div class="text-xs text-slate-400 mt-2">詳細を見る &gt;</div>
+                <div class="text-xs text-slate-400 mt-2 flex items-center justify-end gap-1">
+                    詳細を見る
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                </div>
             </div>
         `;
-        
+
         card.addEventListener("click", () => {
             showDetailView(index);
         });
-        
+
+        // Keyboard accessibility
+        card.addEventListener("keydown", (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                showDetailView(index);
+            }
+        });
+
         container.appendChild(card);
     });
 }
@@ -158,151 +180,361 @@ function renderRouteList() {
 function renderRouteDetail(index) {
     const route = allRoutes[index];
     if (!route) return;
-    
+
     const segments = route.segments || [];
-    
+
     // Get times
-    const firstDeparture = segments.length > 0 && segments[0].departure_time 
-        ? segments[0].departure_time 
+    const firstDeparture = segments.length > 0 && segments[0].departure_time
+        ? segments[0].departure_time
         : "--:--";
     const lastSeg = segments.length > 0 ? segments[segments.length - 1] : null;
     const arrivalTime = lastSeg?.arrival_time || "--:--";
-    
+
+    // Calculate Duration
+    let durationText = "--分";
+    if (firstDeparture !== "--:--" && arrivalTime !== "--:--" && firstDeparture && arrivalTime) {
+        const [depH, depM] = firstDeparture.split(':').map(Number);
+        const [arrH, arrM] = arrivalTime.split(':').map(Number);
+        let totalMinutes = (arrH * 60 + arrM) - (depH * 60 + depM);
+        if (totalMinutes < 0) totalMinutes += 24 * 60;
+
+        const hours = Math.floor(totalMinutes / 60);
+        const mins = totalMinutes % 60;
+        durationText = hours > 0 ? `${hours}時間${mins}分` : `${mins}分`;
+    }
+
     // Update summary
     document.getElementById("first-departure").textContent = firstDeparture;
     document.getElementById("arrival-time").textContent = arrivalTime;
-    document.getElementById("transfer-count").textContent = `${route.transfers || 0}回`;
-    
-    // Update header
+    document.getElementById("transfer-count").textContent = `乗換 ${route.transfers || 0}回`;
+    document.getElementById("total-duration").textContent = durationText;
+
+    // Update header textual content
     document.getElementById("route-header").textContent = `${firstDeparture} 発 → ${arrivalTime} 着`;
-    
+
+    // Update Header Summary Colors based on Risk
+    const summaryContainer = document.getElementById("route-summary-container");
+    const arrivalTimeEl = document.getElementById("arrival-time");
+    const riskLevel = (route.risk && route.risk.level) ? route.risk.level : 'LOW';
+
+    // Define styles for each level
+    const riskStyles = {
+        HIGH: {
+            container: "bg-gradient-to-r from-red-50 to-rose-50 border-red-200",
+            arrivalText: "text-red-600"
+        },
+        MEDIUM: {
+            container: "bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200",
+            arrivalText: "text-amber-600"
+        },
+        LOW: {
+            container: "bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-200",
+            arrivalText: "text-emerald-600"
+        }
+    };
+
+    const style = riskStyles[riskLevel] || riskStyles.LOW;
+
+    // Reset and apply new classes
+    summaryContainer.className = `rounded-2xl p-5 mb-6 border ${style.container}`;
+    arrivalTimeEl.className = `text-4xl font-bold leading-none ${style.arrivalText}`;
+
     // Render delay warnings including Risk
     renderDelayWarnings(route);
-    
+
     // Render timeline
     renderTimeline(segments);
+
+    // Setup AI diagnosis button
+    setupAIDiagnosis(route);
 }
 
 function renderDelayWarnings(route) {
     const container = document.getElementById("delay-warnings");
     if (!container) return;
-    
+
     container.innerHTML = "";
-    
+
     const realTimeWarnings = route.delay_warnings || [];
     const risk = route.risk || { level: 'LOW', reasons: [] };
     const crowd = route.crowd || { level: 'UNKNOWN', score: 0, details: [] };
     const venueWarnings = route.venue_warnings || { transfer_warnings: [], passing_info: [] };
-    
+
+    // Helper to create accordion section
+    function createAccordion(id, icon, title, colorScheme, content, defaultOpen = false) {
+        const colors = {
+            red: { bg: 'bg-red-50', border: 'border-red-200', header: 'text-red-800', headerBg: 'hover:bg-red-100' },
+            amber: { bg: 'bg-amber-50', border: 'border-amber-200', header: 'text-amber-800', headerBg: 'hover:bg-amber-100' },
+            orange: { bg: 'bg-orange-50', border: 'border-orange-200', header: 'text-orange-800', headerBg: 'hover:bg-orange-100' },
+            blue: { bg: 'bg-blue-50', border: 'border-blue-200', header: 'text-blue-800', headerBg: 'hover:bg-blue-100' },
+            emerald: { bg: 'bg-emerald-50', border: 'border-emerald-200', header: 'text-emerald-800', headerBg: 'hover:bg-emerald-100' },
+            slate: { bg: 'bg-slate-50', border: 'border-slate-200', header: 'text-slate-700', headerBg: 'hover:bg-slate-100' }
+        };
+        const c = colors[colorScheme] || colors.slate;
+
+        const section = document.createElement("div");
+        section.className = `${c.bg} ${c.border} border rounded-xl overflow-hidden mb-2`;
+        section.innerHTML = `
+            <button 
+                class="w-full flex items-center justify-between p-4 ${c.headerBg} transition-colors"
+                aria-expanded="${defaultOpen}"
+                aria-controls="accordion-content-${id}"
+                onclick="this.setAttribute('aria-expanded', this.getAttribute('aria-expanded') === 'true' ? 'false' : 'true'); document.getElementById('accordion-content-${id}').classList.toggle('hidden');"
+            >
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">${icon}</span>
+                    <span class="font-bold ${c.header}">${title}</span>
+                </div>
+                <svg class="w-5 h-5 ${c.header} transition-transform" style="transform: rotate(${defaultOpen ? '180deg' : '0deg'});" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+            <div id="accordion-content-${id}" class="${defaultOpen ? '' : 'hidden'} px-4 pb-4">
+                ${content}
+            </div>
+        `;
+        return section;
+    }
+
     let hasContent = false;
 
-    // 0. Venue Transfer Warnings (⚠️ 目立つ)
-    if (venueWarnings.transfer_warnings.length > 0) {
+    // 1. Real-time Delay Warnings (🚨 最重要 - デフォルトで開く)
+    if (realTimeWarnings.length > 0) {
         hasContent = true;
-        const el = document.createElement("div");
-        el.className = "bg-orange-50 border border-orange-200 rounded-xl p-4 mb-2";
-        el.innerHTML = `
-            <div class="flex items-center gap-2 mb-3">
-                <span class="text-2xl">🎪</span>
-                <span class="font-bold text-orange-800">イベント会場の最寄り駅を通ります</span>
-            </div>
-            <div class="space-y-2">
+        const content = realTimeWarnings.map(warning => {
+            let timeDisplay = "";
+            if (warning.timestamp) {
+                try {
+                    const ts = new Date(warning.timestamp);
+                    timeDisplay = `${ts.getHours().toString().padStart(2, '0')}:${ts.getMinutes().toString().padStart(2, '0')} 時点`;
+                } catch (e) { }
+            }
+            return `
+                <div class="bg-white/60 rounded-lg p-3 border border-red-100 mb-2 last:mb-0">
+                    <div class="flex items-center justify-between">
+                        <p class="text-red-800 font-medium">${warning.railway}</p>
+                        ${timeDisplay ? `<span class="text-xs text-red-400">${timeDisplay}</span>` : ''}
+                    </div>
+                    <p class="text-red-700/80 text-sm mt-1">${warning.reason || "遅延が発生しています"}</p>
+                </div>
+            `;
+        }).join('');
+        container.appendChild(createAccordion('realtime', '🚨', `リアルタイム遅延 (${realTimeWarnings.length}件)`, 'red', content, true));
+    }
+
+    // 2. Predictive Risk (⚠️ リスク情報を常に表示)
+    {
+        hasContent = true;
+        const colorScheme = risk.level === 'HIGH' ? 'red' : risk.level === 'MEDIUM' ? 'amber' : 'emerald';
+        const levelText = risk.level === 'HIGH' ? '高い' : risk.level === 'MEDIUM' ? '中程度' : '低い';
+
+        let content = '';
+
+        if (risk.reasons.length > 0) {
+            content = `
+                <p class="text-xs text-slate-500 mb-2">過去の遅延実績データに基づく予測:</p>
+                <div class="space-y-2">
+                    ${risk.reasons.map(r => `
+                        <div class="bg-white/60 rounded-lg p-3 border border-current/10">
+                            <p class="font-medium text-sm">${r.railway || ''}</p>
+                            <p class="text-xs text-slate-600 mt-1">${r.rate || r.display || ''}</p>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        } else {
+            content = `
+                <div class="bg-white/60 rounded-lg p-3 border border-emerald-100 flex items-center gap-3">
+                    <div class="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
+                        <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="font-medium text-emerald-800">通常運転</p>
+                        <p class="text-xs text-slate-500">過去の遅延実績データに問題はありません</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        container.appendChild(createAccordion('risk', '⚠️', `遅延リスク: ${levelText}`, colorScheme, content, risk.level !== 'LOW'));
+    }
+
+    // 3. Venue Warnings (🎪 イベント情報)
+    const allVenues = [...venueWarnings.transfer_warnings, ...venueWarnings.passing_info];
+    if (allVenues.length > 0) {
+        hasContent = true;
+        let content = '';
+
+        if (venueWarnings.transfer_warnings.length > 0) {
+            content += `
+                <p class="text-xs text-orange-600 font-medium mb-2">⚠️ 乗換駅周辺</p>
                 ${venueWarnings.transfer_warnings.map(w => `
-                    <div class="bg-white/60 rounded-lg p-3 border border-orange-100">
+                    <div class="bg-white/60 rounded-lg p-3 border border-orange-100 mb-2">
                         <p class="font-medium text-orange-900">📍 ${w.station}駅 → ${w.venue}</p>
                         <p class="text-xs text-slate-500 mt-1">収容人数: ${w.capacity.toLocaleString()}人 / ${w.note}</p>
                     </div>
                 `).join('')}
-            </div>
-        `;
-        container.appendChild(el);
-    }
-
-    // 0.5 Venue Passing Info (ℹ️ 控えめ)
-    if (venueWarnings.passing_info.length > 0) {
-        hasContent = true;
-        const el = document.createElement("div");
-        el.className = "bg-slate-50 border border-slate-200 rounded-xl p-3 mb-2";
-        el.innerHTML = `
-            <div class="flex items-center gap-2">
-                <span class="text-lg">ℹ️</span>
-                <span class="text-sm text-slate-600">通過駅周辺の会場: ${venueWarnings.passing_info.map(p => `${p.station}(${p.venues.join(', ')})`).join(' / ')}</span>
-            </div>
-        `;
-        container.appendChild(el);
-    }
-
-    // 1. Crowd Info
-    if (crowd.level !== 'UNKNOWN') {
-        hasContent = true;
-        const crowdEl = document.createElement("div");
-        crowdEl.className = "bg-blue-50 border border-blue-200 rounded-xl p-4 mb-2";
-        crowdEl.innerHTML = `
-            <div class="flex items-center gap-2 mb-2">
-                <span class="text-xl">📊</span>
-                <span class="font-bold text-blue-800">平均駅規模: ${crowd.score.toLocaleString()}人/日 (${crowd.level === 'HIGH' ? '大都市圏' : crowd.level === 'MEDIUM' ? '中規模' : '郊外'})</span>
-            </div>
-             <div class="text-xs text-slate-500 pl-1">
-                経由駅の規模: ${crowd.details.join(', ')}
-            </div>
-        `;
-        container.appendChild(crowdEl);
-    }
-
-    // 2. Predictive Risk
-    if (risk.reasons.length > 0) {
-        hasContent = true;
-        
-        let colorClass = "bg-emerald-50 border-emerald-200 text-emerald-800";
-        let icon = "✅";
-        let levelText = "低い";
-        
-        if (risk.level === 'HIGH') {
-            colorClass = "bg-red-50 border-red-200 text-red-800";
-            icon = "⚠️";
-            levelText = "高い";
-        } else if (risk.level === 'MEDIUM') {
-            colorClass = "bg-amber-50 border-amber-200 text-amber-800";
-            icon = "⚠️";
-            levelText = "中程度";
+            `;
         }
-            
-        const el = document.createElement("div");
-        el.className = `${colorClass} border rounded-xl p-4 mb-2`;
-        el.innerHTML = `
-            <div class="flex items-center gap-2 mb-3">
-                <span class="text-2xl">${icon}</span>
-                <span class="font-bold text-lg">遅延リスク: ${levelText}</span>
-            </div>
-            <div class="bg-white/60 rounded-lg p-3 border border-current-10">
-                <p class="text-xs opacity-70 mb-2">過去の遅延実績データ:</p>
-                <ul class="list-disc list-inside text-sm space-y-1">
-                    ${risk.reasons.map(r => `<li>${r}</li>`).join('')}
-                </ul>
-            </div>
-        `;
-        container.appendChild(el);
+
+        if (venueWarnings.passing_info.length > 0) {
+            content += `
+                <p class="text-xs text-slate-500 mt-3 mb-2">ℹ️ 通過駅周辺</p>
+                <p class="text-sm text-slate-600">${venueWarnings.passing_info.map(p => `${p.station}(${p.venues.join(', ')})`).join(' / ')}</p>
+            `;
+        }
+
+        container.appendChild(createAccordion('venue', '🎪', `イベント情報 (${allVenues.length}件)`, 'orange', content, venueWarnings.transfer_warnings.length > 0));
     }
 
-    realTimeWarnings.forEach(warning => {
+    // 4. Crowd Info (📊 駅混雑度)
+    if (crowd.level !== 'UNKNOWN' && crowd.details && crowd.details.length > 0) {
         hasContent = true;
-        const el = document.createElement("div");
-        el.className = "bg-amber-50 border border-amber-200 rounded-xl p-4 mb-2 flex items-center gap-3";
-        el.innerHTML = `
-            <span class="text-2xl">⚡️</span>
-            <div>
-                <p class="text-amber-800 font-medium">${warning.railway}</p>
-                <p class="text-amber-700/80 text-sm">現在 約${warning.delay_minutes}分の遅延が発生しています</p>
+        const levelLabel = crowd.level === 'HIGH' ? '大都市圏' : crowd.level === 'MEDIUM' ? '中規模' : '郊外';
+
+        const content = `
+            <div class="flex items-center gap-3 mb-3">
+                <div class="text-2xl font-bold text-blue-800">${crowd.score.toLocaleString()}</div>
+                <div class="text-xs text-slate-500">人/日<br>(平均乗降客数)</div>
+                <span class="ml-auto px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">${levelLabel}</span>
+            </div>
+            <div class="text-xs text-slate-500">
+                <p class="font-medium mb-1">経由駅の規模:</p>
+                <p>${crowd.details.join(', ')}</p>
             </div>
         `;
-        container.appendChild(el);
-    });
-    
-    // If no content, show a placeholder message
+        container.appendChild(createAccordion('crowd', '📊', '駅混雑度', 'blue', content, false));
+    }
+
+    // If no content, show a positive "normal operation" message
     if (!hasContent) {
         const el = document.createElement("div");
-        el.className = "text-slate-500 text-sm text-center py-4";
-        el.innerHTML = `<p>この路線は現在平常運行中です</p>`;
+        el.className = "bg-emerald-50 border border-emerald-200 rounded-xl p-5 text-center";
+        el.innerHTML = `
+            <div class="flex flex-col items-center gap-2">
+                <div class="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center">
+                    <svg class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                </div>
+                <p class="text-emerald-800 font-medium">すべての路線が平常運行中</p>
+                <p class="text-emerald-600 text-xs">遅延情報・混雑情報はありません</p>
+            </div>
+        `;
         container.appendChild(el);
     }
+}
+
+function setupAIDiagnosis(route) {
+    const btn = document.getElementById("ai-diagnose-btn");
+    const resultContainer = document.getElementById("ai-diagnosis-result");
+
+    if (!btn || !resultContainer) return;
+
+    // Reset state
+    resultContainer.classList.add("hidden");
+    resultContainer.innerHTML = "";
+    btn.disabled = false;
+    btn.innerHTML = `
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+        </svg>
+        診断開始
+    `;
+
+    // Remove old event listeners by cloning
+    const newBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(newBtn, btn);
+
+    newBtn.addEventListener("click", async () => {
+        newBtn.disabled = true;
+        newBtn.innerHTML = `
+            <svg class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            診断中...
+        `;
+
+        resultContainer.classList.remove("hidden");
+        resultContainer.innerHTML = `
+            <div class="bg-purple-50 border border-purple-200 rounded-xl p-4 animate-pulse">
+                <div class="flex items-center gap-2">
+                    <div class="w-6 h-6 bg-purple-200 rounded-full"></div>
+                    <div class="h-4 bg-purple-200 rounded w-48"></div>
+                </div>
+                <div class="mt-3 space-y-2">
+                    <div class="h-3 bg-purple-100 rounded w-full"></div>
+                    <div class="h-3 bg-purple-100 rounded w-4/5"></div>
+                    <div class="h-3 bg-purple-100 rounded w-3/5"></div>
+                </div>
+            </div>
+        `;
+
+        try {
+            const result = await diagnoseRoute(route);
+            renderAIDiagnosis(resultContainer, result);
+
+            newBtn.innerHTML = `
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                再診断
+            `;
+            newBtn.disabled = false;
+        } catch (e) {
+            resultContainer.innerHTML = `
+                <div class="bg-red-50 border border-red-200 rounded-xl p-4">
+                    <div class="flex items-center gap-2 text-red-700">
+                        <span class="text-xl">⚠️</span>
+                        <span class="font-medium">診断エラー</span>
+                    </div>
+                    <p class="text-red-600 text-sm mt-2">${e.message || 'AI診断に失敗しました。しばらく経ってから再度お試しください。'}</p>
+                </div>
+            `;
+
+            newBtn.innerHTML = `
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                再試行
+            `;
+            newBtn.disabled = false;
+        }
+    });
+}
+
+function renderAIDiagnosis(container, result) {
+    const diagnosis = result.diagnosis || "診断結果がありません";
+
+    // Parse diagnosis into sections (simple parsing)
+    const lines = diagnosis.split('\n').filter(l => l.trim());
+
+    container.innerHTML = `
+        <div class="bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 rounded-xl p-5">
+            <div class="flex items-center gap-2 mb-4">
+                <span class="text-2xl">✨</span>
+                <span class="font-bold text-purple-800">AI診断結果</span>
+                <span class="ml-auto text-xs text-purple-400">${result.model || 'AI'}</span>
+            </div>
+            <div class="prose prose-sm prose-purple max-w-none">
+                <div class="text-slate-700 space-y-2 whitespace-pre-wrap leading-relaxed">
+                    ${formatDiagnosisText(diagnosis)}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function formatDiagnosisText(text) {
+    // Convert markdown-like formatting to HTML
+    return text
+        .replace(/^### (.+)$/gm, '<h4 class="font-bold text-purple-800 mt-3 mb-1">$1</h4>')
+        .replace(/^## (.+)$/gm, '<h3 class="font-bold text-purple-900 mt-4 mb-2">$1</h3>')
+        .replace(/^# (.+)$/gm, '<h2 class="font-bold text-purple-900 text-lg mt-4 mb-2">$1</h2>')
+        .replace(/^\d+\. (.+)$/gm, '<p class="font-semibold text-slate-800">$1</p>')
+        .replace(/^[-•] (.+)$/gm, '<p class="pl-4 text-slate-600 before:content-[\"•\"] before:mr-2 before:text-purple-400">$1</p>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong class="text-purple-700">$1</strong>')
+        .replace(/\n/g, '<br>');
 }

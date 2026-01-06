@@ -29,8 +29,7 @@ def get_route_risk(route: dict, departure_time: str) -> dict:
         }
     """
     db = SessionLocal()
-    total_risk = 0
-    max_level = 0
+    max_delay_rate = 0.0  # Track highest delay rate across all railways
     reasons = []
     
     try:
@@ -53,15 +52,12 @@ def get_route_risk(route: dict, departure_time: str) -> dict:
             stats = _get_railway_stats(db, railway_short)
             
             if stats["total"] > 0:
+                rate_pct = (stats["delayed"] / stats["total"]) * 100
+                max_delay_rate = max(max_delay_rate, rate_pct)
+                
                 if stats["delayed"] > 0:
-                    total_risk += stats["delayed"]
-                    max_level = max(max_level, 2)
-                    
-                    rate_pct = (stats["delayed"] / stats["total"]) * 100
-                    
                     # Get latest delay reason
                     latest_reason = stats.get("latest_reason", "")
-                    reason_preview = latest_reason[:50] + "..." if len(latest_reason) > 50 else latest_reason
                     
                     reasons.append({
                         "railway": railway_short,
@@ -71,16 +67,25 @@ def get_route_risk(route: dict, departure_time: str) -> dict:
                     })
                 # Skip adding "normal" reasons to keep output clean
         
-        # Determine risk level
-        if total_risk >= 5:
+        # Check for current real-time delays
+        current_delays = get_current_delays()
+        current_delayed_railways = {d["railway_name"] for d in current_delays}
+        
+        has_current_delay = bool(railways_checked & current_delayed_railways)
+        
+        # Determine risk level based on probability
+        # Priority: current delay > delay rate percentage
+        if has_current_delay:
             level = "HIGH"
-        elif total_risk >= 2:
+        elif max_delay_rate >= 5.0:  # 5%以上
+            level = "HIGH"
+        elif max_delay_rate >= 2.0:   # 2%以上
             level = "MEDIUM"
         else:
             level = "LOW"
         
         return {
-            "score": total_risk,
+            "score": round(max_delay_rate, 1),
             "level": level,
             "reasons": reasons
         }
@@ -215,7 +220,8 @@ def get_current_delays() -> List[dict]:
                 "railway_name": r.railway_name,
                 "operator": r.operator,
                 "status": r.status,
-                "status_text": r.status_text
+                "status_text": r.status_text,
+                "timestamp": r.timestamp  # When this data was collected
             }
             for r in records
         ]

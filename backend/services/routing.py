@@ -4,19 +4,32 @@ Builds a graph from ODPT Station and Railway data,
 and implements Dijkstra's algorithm for shortest path.
 """
 
+
+from db.database import SessionLocal
+from db.models import Station, Railway, RouteEdge
+import os
 from collections import defaultdict
 import heapq
-import requests
-import os
-import json
-import csv
-from dotenv import load_dotenv
 
-load_dotenv(dotenv_path="../.env")
+# Removed unused imports and constants
+
 
 API_KEY = os.getenv("ODPT_ACCESS_TOKEN")
-BASE_URL = "https://api-challenge.odpt.org/api/v4"
-TRAVEL_TIMES_FILE = os.path.join(os.path.dirname(__file__), "travel_times.json")
+from .constants import (
+    ODPT_BASE_URL as BASE_URL,
+    TRAVEL_TIMES_FILE,
+    OPERATOR_JR_EAST,
+    OPERATOR_TOKYO_METRO,
+    OPERATOR_TOEI,
+    ALL_OPERATORS,
+    GTFS_METRO_CODES,
+    GTFS_TOEI_CODES,
+    METRO_TOEI_RAILWAY_INFO,
+    RAILWAY_JA_TO_EN
+)
+
+API_KEY = os.getenv("ODPT_ACCESS_TOKEN")
+
 
 
 class RouteGraph:
@@ -27,225 +40,54 @@ class RouteGraph:
         self.railways = {}  # railway_id -> {name, stations, ...}
         self.is_built = False
 
-
-    def build_from_odpt(self):
-        """Fetch ODPT data and build the graph."""
-        if not API_KEY:
-            raise EnvironmentError("ODPT_ACCESS_TOKEN is not set")
-
-        print("Fetching station data...")
-        stations = self._fetch_stations()
-        print(f"  -> {len(stations)} stations fetched")
-
-        print("Fetching railway data...")
-        railways = self._fetch_railways()
-        self._load_gtfs_railway_info() # Add Metro info
-        print(f"  -> {len(railways)} railways fetched")
-
-        print("Building graph...")
-        # Incorporate GTFS stations
-        gtfs_stations = self._load_gtfs_stations_data()
-        print(f"  -> {len(gtfs_stations)} GTFS stations loaded")
-        stations.extend(gtfs_stations)
-        
-        self._build_nodes(stations)
-        self._build_ride_edges(railways)
-        self._build_transfer_edges()
-        
-        # Load GTFS edges (accurate times)
-        self._load_gtfs_edges()
-        
-        self.is_built = True
-        print(f"Graph built: {len(self.station_info)} nodes, {sum(len(e) for e in self.edges.values())} edges")
-
-    def _fetch_stations(self) -> list:
-        """Fetch stations from ODPT API for all supported railways."""
-        # Use railway list from constants or fetch dynamically?
-        # For robustness, let's fetch railways first (already doing it in _fetch_railways),
-        # but here we need station list.
-        # Let's iterate over known operators but maybe handle pagination?
-        # ODPT API doesn't use standard pagination header usually.
-        # Instead, let's fetch by railway for Metro/Toei to be safe.
-        
-        # JR East usually works fine by operator (800+ stations).
-        # Metro/Toei seems to fail.
-        
-        all_stations = []
-        
-        # 1. JR East (By Operator)
+    def load_from_db(self):
+        """Build the graph from the database."""
+        print("Loading graph from DB...")
+        db = SessionLocal()
         try:
-            url = f"{BASE_URL}/odpt:Station"
-            params = {
-                "odpt:operator": "odpt.Operator:JR-East",
-                "acl:consumerKey": API_KEY
-            }
-            response = requests.get(url, params=params, timeout=30)
-            response.raise_for_status()
-            data = response.json()
-            all_stations.extend(data)
-            print(f"    JR-East: {len(data)} stations")
+            # 1. Load Railways
+            railways = db.query(Railway).all()
+            for r in railways:
+                self.railways[r.id] = {
+                    "id": r.id,
+                    "name_ja": r.name_ja,
+                    "name_en": r.name_en
+                }
+            print(f"  Loaded {len(railways)} railways.")
+
+            # 2. Load Stations
+            stations = db.query(Station).all()
+            for s in stations:
+                self.station_info[s.id] = {
+                    "id": s.id,
+                    "name_ja": s.name_ja,
+                    "name_en": s.name_en,
+                    "railway": s.railway_id,
+                    "lat": s.lat,
+                    "lon": s.lon
+                }
+                self.station_by_name[s.name_ja].append(s.id)
+            print(f"  Loaded {len(stations)} stations.")
+
+            # 3. Load Edges
+            edges = db.query(RouteEdge).all()
+            count = 0
+            for e in edges:
+                self.edges[e.from_station_id].append({
+                    "to": e.to_station_id,
+                    "time": e.time_minutes,
+                    "type": e.type,
+                    "railway": e.railway_id
+                })
+                count += 1
+            print(f"  Loaded {count} edges.")
+
+            self.is_built = True
+
         except Exception as e:
-            print(f"    JR-East: Error - {e}")
-
-        # 2. Metro & Toei (By Railway - to ensure completeness)
-        # We need the railway IDs. Let's use the ones from constants if possible, 
-        # OR we can rely on _fetch_railways having run effectively? No, _fetch_stations runs first.
-        # Let's hardcode the operators to fetch Railway IDs first, then Stations.
-        
-        other_operators = [
-            "odpt.Operator:TokyoMetro",
-            "odpt.Operator:Toei"
-        ]
-        
-        for operator in other_operators:
-            try:
-                # First get railways for this operator
-                r_url = f"{BASE_URL}/odpt:Railway"
-                r_params = {
-                    "odpt:operator": operator,
-                    "acl:consumerKey": API_KEY
-                }
-                r_resp = requests.get(r_url, params=r_params, timeout=30)
-                r_resp.raise_for_status()
-                railways = r_resp.json()
-                
-                op_stations = []
-                for r in railways:
-                    railway_id = r["owl:sameAs"]
-                    s_url = f"{BASE_URL}/odpt:Station"
-                    s_params = {
-                        "odpt:railway": railway_id,
-                        "acl:consumerKey": API_KEY
-                    }
-                    s_resp = requests.get(s_url, params=s_params, timeout=30)
-                    s_resp.raise_for_status()
-                    s_data = s_resp.json()
-                    op_stations.extend(s_data)
-                
-                all_stations.extend(op_stations)
-                print(f"    {operator.split(':')[-1]}: {len(op_stations)} stations")
-                
-            except Exception as e:
-                print(f"    {operator.split(':')[-1]}: Error - {e}")
-                
-        return all_stations
-
-    def _fetch_railways(self) -> list:
-        """Fetch railways from ODPT API for all supported operators."""
-        operators = [
-            "odpt.Operator:JR-East",
-            "odpt.Operator:TokyoMetro",
-            "odpt.Operator:Toei",
-        ]
-        all_railways = []
-        for operator in operators:
-            try:
-                url = f"{BASE_URL}/odpt:Railway"
-                params = {
-                    "odpt:operator": operator,
-                    "acl:consumerKey": API_KEY
-                }
-                response = requests.get(url, params=params, timeout=30)
-                response.raise_for_status()
-                data = response.json()
-                all_railways.extend(data)
-                print(f"    {operator.split(':')[-1]}: {len(data)} railways")
-            except Exception as e:
-                print(f"    {operator.split(':')[-1]}: Error - {e}")
-        return all_railways
-
-    def _build_nodes(self, stations: list):
-        """Build station nodes from ODPT station data."""
-        for station in stations:
-            station_id = station.get("owl:sameAs")
-            title = station.get("odpt:stationTitle", {})
-            name_ja = title.get("ja", station.get("dc:title", ""))
-            name_en = title.get("en", "")
-            railway = station.get("odpt:railway")
-
-            self.station_info[station_id] = {
-                "id": station_id,
-                "name_ja": name_ja,
-                "name_en": name_en,
-                "railway": railway
-            }
-            self.station_by_name[name_ja].append(station_id)
-
-    def _build_ride_edges(self, railways: list):
-        """Build ride edges from railway station order."""
-        
-        # Load travel times from DB into a dictionary for fast lookup
-        # Key: (from_simple_name, to_simple_name) -> time_minutes
-        travel_times = {}
-        try:
-            from db.database import SessionLocal
-            from db.models import StationInterval
-            db = SessionLocal()
-            intervals = db.query(StationInterval).all()
-            for inv in intervals:
-                travel_times[(inv.from_station, inv.to_station)] = inv.time_minutes
+            print(f"Error loading graph from DB: {e}")
+        finally:
             db.close()
-            print(f"Loaded {len(travel_times)} travel time intervals from DB")
-        except Exception as e:
-            print(f"Warning: Could not load travel times from DB: {e}")
-
-        for railway in railways:
-            railway_id = railway.get("owl:sameAs")
-            title = railway.get("odpt:railwayTitle", {})
-            name_ja = title.get("ja", railway.get("dc:title", ""))
-            station_order = railway.get("odpt:stationOrder", [])
-
-            self.railways[railway_id] = {
-                "id": railway_id,
-                "name_ja": name_ja,
-                "stations": [s["odpt:station"] for s in station_order]
-            }
-
-            # Add edges between adjacent stations
-            for i in range(len(station_order) - 1):
-                from_station = station_order[i]["odpt:station"]
-                to_station = station_order[i + 1]["odpt:station"]
-                
-                # Look up actual travel time, default to 3 minutes if not found
-                # Match using simplified names (last part of ID)
-                from_simple = from_station.split(".")[-1]
-                to_simple = to_station.split(".")[-1]
-                
-                time_forward = travel_times.get((from_simple, to_simple), 3.0)
-                time_backward = travel_times.get((to_simple, from_simple), 3.0)
-
-                # Bidirectional edges with actual times (or default)
-                self.edges[from_station].append({
-                    "to": to_station,
-                    "time": time_forward,
-                    "type": "ride",
-                    "railway": railway_id
-                })
-                self.edges[to_station].append({
-                    "to": from_station,
-                    "time": time_backward,
-                    "type": "ride",
-                    "railway": railway_id
-                })
-
-    def _build_transfer_edges(self):
-        """Build transfer edges for same-name stations (0 minute transfer)."""
-        for name, station_ids in self.station_by_name.items():
-            if len(station_ids) > 1:
-                # Add transfer edges between all stations with the same name
-                for i, s1 in enumerate(station_ids):
-                    for s2 in station_ids[i + 1:]:
-                        # Transfer time = 0 (theoretical)
-                        self.edges[s1].append({
-                            "to": s2,
-                            "time": 0,
-                            "type": "transfer"
-                        })
-                        self.edges[s2].append({
-                            "to": s1,
-                            "time": 0,
-                            "type": "transfer"
-                        })
 
     def find_station_by_name(self, name: str) -> list:
         """Find station IDs by Japanese name."""
@@ -357,8 +199,8 @@ class RouteGraph:
         # Step 1: Variable Transfer Buffer Strategy
         # 0: Fastest (accept transfers)
         # 5: Balanced (standard)
-        # 20: Minimum transfers (1 transfer = 20min penalty)
-        buffers = [0, 5, 20]
+        # 10: Minimum transfers (1 transfer = 10min penalty)
+        buffers = [0, 5, 10]
         
         for buf in buffers:
             if len(routes) >= limit:
@@ -543,257 +385,18 @@ class RouteGraph:
             "path_ids": path
         }
 
-
-
-    def _load_gtfs_railway_info(self):
-        """Populate railway info for Metro lines to support name mapping."""
-        # Hardcoded map based on constants.py
-        # This ensures we get "銀座線" -> "Ginza" mapping in finder.
-        
-        # Metro
-        self.railways["odpt.Railway:TokyoMetro.Ginza"] = {"name_ja": "銀座線", "name_en": "Ginza Line"}
-        self.railways["odpt.Railway:TokyoMetro.Marunouchi"] = {"name_ja": "丸ノ内線", "name_en": "Marunouchi Line"}
-        self.railways["odpt.Railway:TokyoMetro.Hibiya"] = {"name_ja": "日比谷線", "name_en": "Hibiya Line"}
-        self.railways["odpt.Railway:TokyoMetro.Tozai"] = {"name_ja": "東西線", "name_en": "Tozai Line"}
-        self.railways["odpt.Railway:TokyoMetro.Chiyoda"] = {"name_ja": "千代田線", "name_en": "Chiyoda Line"}
-        self.railways["odpt.Railway:TokyoMetro.Yurakucho"] = {"name_ja": "有楽町線", "name_en": "Yurakucho Line"}
-        self.railways["odpt.Railway:TokyoMetro.Hanzomon"] = {"name_ja": "半蔵門線", "name_en": "Hanzomon Line"}
-        self.railways["odpt.Railway:TokyoMetro.Namboku"] = {"name_ja": "南北線", "name_en": "Namboku Line"}
-        self.railways["odpt.Railway:TokyoMetro.Fukutoshin"] = {"name_ja": "副都心線", "name_en": "Fukutoshin Line"}
-        
-        # Toei
-        self.railways["odpt.Railway:Toei.Asakusa"] = {"name_ja": "浅草線", "name_en": "Asakusa Line"}
-        self.railways["odpt.Railway:Toei.Mita"] = {"name_ja": "三田線", "name_en": "Mita Line"}
-        self.railways["odpt.Railway:Toei.Shinjuku"] = {"name_ja": "新宿線", "name_en": "Shinjuku Line"}
-        self.railways["odpt.Railway:Toei.Oedo"] = {"name_ja": "大江戸線", "name_en": "Oedo Line"}
-
-    def _load_gtfs_stations_data(self) -> list:
-        """Load Tokyo Metro and Toei stations from GTFS and return as list of ODPT-like objects."""
-        from pathlib import Path
-        import csv
-        
-        base_dir = Path(__file__).resolve().parent.parent / "data"
-        gtfs_dirs = [
-            {"path": base_dir / "metro_gtfs", "type": "Metro"},
-            {"path": base_dir / "Toei-Train-GTFS", "type": "Toei"}
-        ]
-        
-        generated_stations = []
-        
-        # Line Code Maps
-        # Metro
-        metro_codes = {
-            "G": "Ginza", "M": "Marunouchi", "m": "Marunouchi", "H": "Hibiya",
-            "T": "Tozai", "C": "Chiyoda", "Y": "Yurakucho", "Z": "Hanzomon",
-            "N": "Namboku", "F": "Fukutoshin"
-        }
-        # Toei
-        toei_codes = {
-            "A": "Asakusa", "I": "Mita", "S": "Shinjuku", "E": "Oedo"
-        }
-
-        for gtfs_info in gtfs_dirs:
-            gtfs_dir = gtfs_info["path"]
-            source_type = gtfs_info["type"]
-            
-            if not gtfs_dir.exists():
-                print(f"Warning: GTFS directory not found at {gtfs_dir}")
-                continue
-                
-            print(f"Loading {source_type} GTFS stations from {gtfs_dir}...")
-            
-            # Load Translations
-            translations = {}
-            trans_file = gtfs_dir / "translations.txt"
-            if trans_file.exists():
-                try:
-                    with open(trans_file, "r", encoding="utf-8") as f:
-                        reader = csv.DictReader(f)
-                        for row in reader:
-                            if row.get("table_name") == "stops" and row.get("field_name") == "stop_name":
-                                if row.get("language") == "en":
-                                    ja_name = row.get("field_value")
-                                    en_name = row.get("translation")
-                                    if ja_name and en_name:
-                                        translations[ja_name] = en_name
-                except Exception as e:
-                    print(f"Error loading translations from {trans_file}: {e}")
-
-            try:
-                with open(gtfs_dir / "stops.txt", "r", encoding="utf-8") as f:
-                    reader = csv.DictReader(f)
-                    for row in reader:
-                        stop_code = row.get("stop_code")
-                        stop_name = row["stop_name"]
-                        
-                        if not stop_code: continue
-                        
-                        # Get English name
-                        stop_name_en = translations.get(stop_name, stop_name)
-
-                        # Infer railway
-                        prefix = stop_code[0]
-                        line_name = None
-                        operator_prefix = ""
-                        
-                        if source_type == "Metro":
-                            line_name = metro_codes.get(prefix)
-                            operator_prefix = "TokyoMetro"
-                        elif source_type == "Toei":
-                            line_name = toei_codes.get(prefix)
-                            operator_prefix = "Toei"
-                            
-                        # Fallback: Check if code is in other map (Mixed data?)
-                        if not line_name:
-                            if prefix in metro_codes:
-                                line_name = metro_codes[prefix]
-                                operator_prefix = "TokyoMetro"
-                            elif prefix in toei_codes:
-                                line_name = toei_codes[prefix]
-                                operator_prefix = "Toei"
-                        
-                        if line_name:
-                            suffix = line_name
-                            railway_id = f"odpt.Railway:{operator_prefix}.{suffix}"
-
-                            # Create synthetic object
-                            station_id = f"gtfs.Station:{operator_prefix}.{suffix}.{stop_code}"
-                            
-                            generated_stations.append({
-                                "owl:sameAs": station_id,
-                                "dc:title": stop_name,
-                                "odpt:stationTitle": {"ja": stop_name, "en": stop_name_en},
-                                "odpt:railway": railway_id
-                            })
-                            
-            except Exception as e:
-                print(f"Error loading stops from {gtfs_dir}: {e}")
-                
-        return generated_stations
-
-    def _load_gtfs_edges(self):
-        """Load Tokyo Metro GTFS data to enhance graph edges."""
-        gtfs_dir = os.path.join(os.path.dirname(__file__), "../../backend/data/metro_gtfs")
-        if not os.path.exists(gtfs_dir):
-            return
-
-        print("Loading GTFS edges...")
-        from .constants import RAILWAY_JA_TO_EN
-        
-        # 1. Routes
-        gtfs_route_to_odpt = {}
-        try:
-            with open(os.path.join(gtfs_dir, "routes.txt"), "r", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    route_name = row["route_long_name"]
-                    suffix = RAILWAY_JA_TO_EN.get(route_name)
-                    if suffix:
-                        if "都営" in row.get("agency_id", "") or suffix in ["Asakusa", "Mita", "Shinjuku", "Oedo"]:
-                             gtfs_route_to_odpt[row["route_id"]] = f"odpt.Railway:Toei.{suffix}"
-                        else:
-                             gtfs_route_to_odpt[row["route_id"]] = f"odpt.Railway:TokyoMetro.{suffix}"
-        except Exception: pass
-
-        # 2. Stops (ID -> Name)
-        gtfs_stops = {}
-        try:
-            with open(os.path.join(gtfs_dir, "stops.txt"), "r", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    gtfs_stops[row["stop_id"]] = row["stop_name"]
-        except Exception: pass
-
-        # 3. Trips
-        trip_route_map = {}
-        try:
-            with open(os.path.join(gtfs_dir, "trips.txt"), "r", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    trip_route_map[row["trip_id"]] = row["route_id"]
-        except Exception: pass
-
-        # 4. Times
-        try:
-            with open(os.path.join(gtfs_dir, "stop_times.txt"), "r", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
-                segment_times = defaultdict(list)
-                
-                # Group by trip
-                trips_data = defaultdict(list)
-                for row in reader:
-                    trips_data[row["trip_id"]].append(row)
-                
-                for trip_id, stops in trips_data.items():
-                    stops.sort(key=lambda x: int(x["stop_sequence"]))
-                    route_id = trip_route_map.get(trip_id)
-                    railway_id = gtfs_route_to_odpt.get(route_id)
-                    if not railway_id: continue
-                    
-                    for i in range(len(stops) - 1):
-                        s1, s2 = stops[i], stops[i+1]
-                        name1 = gtfs_stops.get(s1["stop_id"])
-                        name2 = gtfs_stops.get(s2["stop_id"])
-                        if not name1 or not name2: continue
-                        
-                        try:
-                            def ptime(t):
-                                h,m,s = map(int, t.split(':'))
-                                return h*60 + m + s/60
-                            diff = ptime(s2["arrival_time"]) - ptime(s1["departure_time"])
-                            if diff < 0: diff += 24*60
-                            segment_times[(name1, name2, railway_id)].append(diff)
-                        except: pass
-                
-                count = 0
-                for (n1, n2, rid), times in segment_times.items():
-                     ids1 = self.station_by_name.get(n1, [])
-                     ids2 = self.station_by_name.get(n2, [])
-                     
-                     oid1 = next((i for i in ids1 if self.station_info[i]["railway"] == rid), None)
-                     oid2 = next((i for i in ids2 if self.station_info[i]["railway"] == rid), None)
-                     
-                     if oid1 and oid2:
-                         avg = sum(times)/len(times)
-                         self._upsert_edge(oid1, oid2, avg, "ride", rid)
-                         count += 1
-                
-                print(f"Updated {count} segments from GTFS.");
-                
-        except Exception as e:
-            print(f"GTFS Edges Error: {e}")
-
-    def _upsert_edge(self, u, v, time, type, railway):
-        current_edges = self.edges[u]
-        found = False
-        for edge in current_edges:
-            if edge["to"] == v and edge["type"] == type and edge.get("railway") == railway:
-                edge["time"] = time 
-                found = True
-                break
-        if not found:
-            self.edges[u].append({
-                "to": v,
-                "time": time,
-                "type": type,
-                "railway": railway
-            })
-
-
 # Global instance
 route_graph = RouteGraph()
-
 
 def get_graph() -> RouteGraph:
     """Get the global route graph instance."""
     return route_graph
-
 
 def initialize_graph():
     """Initialize the graph by building it from ODPT data."""
     print("Initializing route graph...")
     global route_graph
     if not route_graph.is_built:
-        route_graph.build_from_odpt()
+        route_graph.load_from_db()
 
 

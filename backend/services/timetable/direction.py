@@ -16,16 +16,22 @@ def get_expected_direction(db: Session, railway_name: str, from_station: str, to
         "Inbound" if to_station has lower index
         None if cannot determine
     """
-    # Get station indices
-    from_record = db.query(StationOrder).filter(
-        StationOrder.railway_name == railway_name,
-        StationOrder.station_name == from_station
-    ).first()
-    
-    to_record = db.query(StationOrder).filter(
-        StationOrder.railway_name == railway_name,
-        StationOrder.station_name == to_station
-    ).first()
+    # Helper to find station order
+    def find_order(name: str):
+        rec = db.query(StationOrder).filter(
+            StationOrder.railway_name == railway_name,
+            StationOrder.station_name == name
+        ).first()
+        if not rec and "-" in name:
+            # Try removing hyphen (Nishi-Funabashi -> NishiFunabashi)
+            rec = db.query(StationOrder).filter(
+                StationOrder.railway_name == railway_name,
+                StationOrder.station_name == name.replace("-", "")
+            ).first()
+        return rec
+
+    from_record = find_order(from_station)
+    to_record = find_order(to_station)
     
     if from_record and to_record:
         # Special handling for Yamanote Line (Circular)

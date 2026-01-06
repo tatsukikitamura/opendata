@@ -138,12 +138,6 @@ function setupSearchForm() {
         params.append("from", fromStation);
         params.append("to", toStation);
         params.append("time", time);
-        
-        // Add transfer buffer if set
-        const transferBuffer = document.getElementById("transfer-buffer")?.value || "0";
-        if (transferBuffer !== "0") {
-            params.append("transfer_buffer", transferBuffer);
-        }
 
         // Navigate to results page
         window.location.href = `/detail.html?${params.toString()}`;
