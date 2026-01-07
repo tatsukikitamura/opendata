@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" crossorigin href="/opendata/assets/style-B8oijt2l.css">
+  <link rel="stylesheet" crossorigin href="/opendata/assets/style-B_0SSEOK.css">
 </head>
 
 <body class="bg-slate-50 text-slate-800 font-sans antialiased selection:bg-emerald-500 selection:text-white">
@@ -45,7 +45,7 @@
         <p class="text-emerald-800 leading-relaxed">
           「ノー遅延乗り換え」は、<strong>絶対に遅刻できない人</strong>のために作られた乗換案内サービスです。
           過去の遅延実績データを分析し、各路線の遅延リスクを可視化。
-          リアルタイム遅延情報と組み合わせて、あなたに最も安全な経路を提案します。
+          さらにAIがリアルタイムで運行状況や混雑度を分析し、最適なアドバイスを提供します。
         </p>
       </section>
 
@@ -76,6 +76,47 @@
               <p class="text-sm text-slate-500">各ルートの遅延リスクと現在の運行状況を確認できます</p>
             </div>
           </div>
+        </div>
+          <div class="flex gap-3">
+             <span class="shrink-0 w-6 h-6 bg-emerald-600 text-white rounded-full flex items-center justify-center text-sm font-bold">4</span>
+             <div>
+               <p class="font-medium text-slate-800">AI診断で詳細を確認</p>
+               <p class="text-sm text-slate-500">「診断開始」ボタンを押すと、AIがリスクや混雑状況を詳しく解説します</p>
+             </div>
+           </div>
+      </section>
+
+      <!-- Features -->
+      <section class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6">
+        <h2 class="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+          <span>✨</span> 主な機能
+        </h2>
+        
+        <div class="space-y-4">
+          <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+            <p class="font-bold text-slate-800 mb-2">📊 4軸評価スコアリング</p>
+            <p class="text-sm text-slate-600 mb-2">ルートを4つの観点から総合的に評価します：</p>
+            <ul class="text-sm text-slate-500 space-y-1 list-disc list-inside ml-1">
+              <li><span class="font-bold text-blue-600">速さ</span>: 所要時間の短さ</li>
+              <li><span class="font-bold text-emerald-600">快適</span>: 混雑度の低さ・乗換の少なさ</li>
+              <li><span class="font-bold text-purple-600">安定</span>: 遅延リスクの低さ</li>
+              <li><span class="font-bold text-orange-600">安さ</span>: 運賃の安さ</li>
+            </ul>
+          </div>
+
+          <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+            <p class="font-bold text-slate-800 mb-2">🤖 AIリスク診断</p>
+            <p class="text-sm text-slate-600">
+              OpenAI APIを活用し、選択したルートのリスク要因、イベントによる混雑予報、代替案などを自然言語でアドバイスします。
+            </p>
+          </div>
+
+          <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+             <p class="font-bold text-slate-800 mb-2">👥 駅混雑度・イベント情報</p>
+             <p class="text-sm text-slate-600">
+               乗降客数データに基づく駅の規模判定や、沿線施設（スタジアム等）のイベント情報を考慮し、突発的な混雑を警告します。
+             </p>
+           </div>
         </div>
       </section>
 
@@ -128,6 +169,10 @@
             <p class="font-medium text-slate-800 mb-1">遅延実績データ</p>
             <p class="text-sm text-slate-500">TrainInformation APIから収集した過去の遅延記録</p>
           </div>
+          <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+             <p class="font-medium text-slate-800 mb-1">駅別乗降客数データ</p>
+             <p class="text-sm text-slate-500">国土交通省・各鉄道事業者公開のオープンデータ</p>
+           </div>
         </div>
       </section>
 
@@ -179,6 +224,7 @@
             <ul class="text-sm text-slate-500 space-y-1">
               <li>• ODPT API</li>
               <li>• GTFS</li>
+              <li>• OpenAI API</li>
               <li>• SQLAlchemy</li>
             </ul>
           </div>
@@ -187,6 +233,7 @@
             <ul class="text-sm text-slate-500 space-y-1">
               <li>• Dijkstra's Algorithm</li>
               <li>• Delay Risk Analysis</li>
+              <li>• BeautifulSoup4 (Scraping)</li>
             </ul>
           </div>
         </div>
