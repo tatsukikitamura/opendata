@@ -1,6 +1,6 @@
 import { getLineColor } from '../lib/utils.js';
 
-export function renderTimeline(segments) {
+export function renderTimeline(segments, risk = null) {
     const timeline = document.getElementById("route-timeline");
     if (!timeline) return;
     
@@ -8,7 +8,21 @@ export function renderTimeline(segments) {
 
     segments.forEach((segment, index) => {
         const isLastSegment = index === segments.length - 1;
-        const lineColor = getLineColor(segment.railway || "");
+        
+        // Determine line color based on risk
+        let lineColor = getLineColor(segment.railway || "");
+        
+        // Check for risk
+        if (risk && risk.reasons && segment.railway_id) {
+            const shortName = segment.railway_id.split(".").pop();
+            const riskInfo = risk.reasons.find(r => r.railway === shortName);
+            
+            if (riskInfo) {
+                // If this railway contributes to the risk, color it
+                if (risk.level === 'HIGH') lineColor = "bg-red-500";
+                else if (risk.level === 'MEDIUM') lineColor = "bg-amber-500";
+            }
+        }
         
         // --- 1. Station Row (Start or Transfer) ---
         const stationRow = document.createElement("div");

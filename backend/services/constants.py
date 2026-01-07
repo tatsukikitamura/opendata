@@ -118,6 +118,22 @@ RAILWAY_JA_TO_EN = {
     "総武本線": "Sobu",
     "成田線": "Narita",
     "成田線我孫子支線": "NaritaAbikoBranch",
+    "中央本線": "Chuo",
+    "中央本線(辰野支線)": "ChuoTatsunoBranch",
+    "只見線": "Tadami",
+    "山田線": "Yamada",
+    "奥羽本線": "Ou",
+    "花輪線": "Hanawa",
+    "津軽線": "Tsugaru",
+    "五能線": "Gono",
+    "米坂線": "Yonesaka",
+    "仙山線": "Senzan",
+    "奥羽本線(山形線)": "OuYamagata",
+    "陸羽東線": "RikuEast",
+    "羽越本線": "Uetsu",
+    "陸羽西線": "RikuWest",
+    "篠ノ井線": "Shinonoi",
+    "東横線": "Toyoko",
 }
 
 # English to Japanese railway name mapping

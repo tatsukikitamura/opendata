@@ -2,7 +2,7 @@
  * Home page logic
  */
 import { formatDuration } from '../lib/utils.js';
-import { getStations } from '../lib/api.js';
+import { getStations, getCurrentDelays } from '../lib/api.js';
 
 let allStations = [];
 
@@ -12,12 +12,64 @@ document.addEventListener("DOMContentLoaded", async () => {
     
     setupTimeButtons();
     setupSearchForm();
+    
+    // Render network status immediately
+    renderNetworkStatus();
 
     // Fetch stations and setup autocomplete
     allStations = await getStations();
     setupAutocomplete("from-station");
     setupAutocomplete("to-station");
 });
+
+async function renderNetworkStatus() {
+    const container = document.getElementById("network-status-container");
+    if (!container) return;
+
+    try {
+        const delays = await getCurrentDelays();
+        
+        if (delays.length === 0) {
+            container.innerHTML = `
+                <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex items-center gap-3 animate-fade-in">
+                    <div class="bg-white p-2 rounded-full shadow-sm">
+                        <span class="text-xl">✨</span>
+                    </div>
+                    <div>
+                        <p class="font-bold text-emerald-800 text-sm">平常運行中</p>
+                        <p class="text-xs text-emerald-600">現在、主要路線で大きな遅延は発生していません。</p>
+                    </div>
+                </div>
+            `;
+        } else {
+            // Group by railway name to avoid duplicates
+            const uniqueRailways = [...new Set(delays.map(d => d.railway_name))];
+            
+            // Generate list of names
+            const namesList = uniqueRailways.join('、');
+
+            container.innerHTML = `
+                <div class="bg-red-50 border border-red-100 rounded-xl p-4 animate-fade-in shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <div class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse flex-shrink-0"></div>
+                        <div>
+                            <p class="font-bold text-red-800 text-sm">
+                                <span class="text-base mr-1">${uniqueRailways.length}</span>路線で遅延が発生しています
+                            </p>
+                            <p class="text-xs text-red-600 mt-0.5 leading-relaxed">
+                                ${namesList}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        container.classList.remove("hidden");
+    } catch (e) {
+        console.error("Failed to render network status", e);
+    }
+}
 
 function setupAutocomplete(inputId) {
     const input = document.getElementById(inputId);

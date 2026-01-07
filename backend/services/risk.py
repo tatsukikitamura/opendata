@@ -10,7 +10,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 from db.database import SessionLocal
 from db.models import TrainStatus
-from .constants import RAILWAY_JA_TO_EN
+from .constants import RAILWAY_JA_TO_EN, RAILWAY_EN_TO_JA, METRO_TOEI_RAILWAY_INFO
 
 
 def get_route_risk(route: dict, departure_time: str) -> dict:
@@ -59,11 +59,37 @@ def get_route_risk(route: dict, departure_time: str) -> dict:
                     # Get latest delay reason
                     latest_reason = stats.get("latest_reason", "")
                     
+                    # Resolve Japanese Name for display
+                    # 1. Try EN -> JA (for JR short codes)
+                    display_name = RAILWAY_EN_TO_JA.get(railway_short, railway_short)
+                    
+                    # 2. If it looks like an ID or we have info for it (Metro/Toei often normalized to short code though)
+                    # Note: _normalize_railway_name returns English short code for JR, but suffixes for others.
+                    # Let's try to map back if needed.
+                    # Actually, _normalize_railway_name implementation:
+                    # - JR: "odpt.Railway:JR-East.ChuoRapid" -> "ChuoRapid" -> "中央線快速" (via RAILWAY_EN_TO_JA)
+                    # - Metro: "odpt.Railway:TokyoMetro.Ginza" -> "Ginza"
+                    # - Toei: "odpt.Railway:Toei.Asakusa" -> "Asakusa"
+                    
+                    # Check if the short code is in our constants values to find key, or direct map?
+                    # RAILWAY_EN_TO_JA handles JR short codes.
+                    # For Metro/Toei, we might need a mapping from "Ginza" to "銀座線".
+                    # Let's add a helper or extend RAILWAY_EN_TO_JA in constants? 
+                    # For now, let's look at METRO_TOEI_RAILWAY_INFO.
+                    
+                    found_ja = False
+                    if display_name == railway_short: # Not found in JR map
+                         for k, v in METRO_TOEI_RAILWAY_INFO.items():
+                             if k.endswith(f".{railway_short}"):
+                                 display_name = v["name_ja"]
+                                 found_ja = True
+                                 break
+                    
                     reasons.append({
-                        "railway": railway_short,
+                        "railway": display_name,
                         "rate": f"{stats['delayed']}/{stats['total']}件 ({rate_pct:.1f}%)",
                         "latest_reason": latest_reason,
-                        "display": f"{railway_short}: {rate_pct:.1f}%の遅延リスク"
+                        "display": f"{display_name}: {rate_pct:.1f}%の遅延リスク"
                     })
                 # Skip adding "normal" reasons to keep output clean
         
@@ -214,17 +240,34 @@ def get_current_delays() -> List[dict]:
         
         records = db.execute(query).scalars().all()
         
-        return [
-            {
+        # Import mappings and major railways list
+        from .constants import RAILWAY_EN_TO_JA, METRO_TOEI_RAILWAY_INFO, ALL_RAILWAYS
+        
+        results = []
+        for r in records:
+            # Filter for major railways only
+            if r.railway_id not in ALL_RAILWAYS:
+                continue
+
+            # Determine Japanese name
+            # 1. Try EN -> JA map (for JR)
+            ja_name = RAILWAY_EN_TO_JA.get(r.railway_name, r.railway_name)
+            
+            # 2. If it is full ID (Metro/Toei), try that map
+            if r.railway_id in METRO_TOEI_RAILWAY_INFO:
+                ja_name = METRO_TOEI_RAILWAY_INFO[r.railway_id]["name_ja"]
+            
+            results.append({
                 "railway_id": r.railway_id,
-                "railway_name": r.railway_name,
+                "railway_name": ja_name, # Return JA name as primary name for display
+                "railway_name_en": r.railway_name,
                 "operator": r.operator,
                 "status": r.status,
                 "status_text": r.status_text,
-                "timestamp": r.timestamp  # When this data was collected
-            }
-            for r in records
-        ]
+                "timestamp": r.timestamp
+            })
+            
+        return results
         
     finally:
         db.close()

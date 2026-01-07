@@ -49,6 +49,9 @@ app.include_router(stations.router, tags=["Stations"])
 
 app.include_router(ai.router, tags=["AI"])
 
+from routers import delays
+app.include_router(delays.router)
+
 
 @app.get("/")
 def read_root():

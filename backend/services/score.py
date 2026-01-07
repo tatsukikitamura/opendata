@@ -7,18 +7,21 @@ def calculate_route_scores(route: dict, all_routes: list) -> dict:
     1. Speed (Fast): Relative to the fastest route in the set.
     2. Comfort (Easy): Inverse of crowd metrics.
     3. Reliability (Safe): Inverse of delay risk.
+    4. Cost (Cheap): Relative to the cheapest route.
     
     Returns:
         dict: {
             "speed": float (0.0 - 5.0),
             "comfort": float (0.0 - 5.0),
-            "reliability": float (0.0 - 5.0)
+            "reliability": float (0.0 - 5.0),
+            "cost": float (0.0 - 5.0)
         }
     """
     scores = {
         "speed": 0.0,
         "comfort": 0.0,
-        "reliability": 0.0
+        "reliability": 0.0,
+        "cost": 0.0
     }
     
     # 1. Speed Score
@@ -160,4 +163,21 @@ def calculate_route_scores(route: dict, all_routes: list) -> dict:
     reliability = 5.0 - (risk_score * 1.0)
     scores["reliability"] = round(max(1.0, min(5.0, reliability)), 1)
     
+    # 4. Cost Score
+    # Relative to the cheapest route in the set.
+    # Logic: Score = 5.0 * (min_fare / my_fare)
+    fares = []
+    for r in all_routes:
+        f = r.get("fare")
+        if f and isinstance(f, (int, float)) and f > 0:
+            fares.append(f)
+            
+    my_fare = route.get("fare")
+    if fares and my_fare and isinstance(my_fare, (int, float)) and my_fare > 0:
+        min_fare = min(fares)
+        scores["cost"] = round(min(5.0, 5.0 * (min_fare / my_fare)), 1)
+    else:
+        # If fare missing, neutral score
+        scores["cost"] = 3.0
+
     return scores

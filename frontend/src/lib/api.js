@@ -79,3 +79,18 @@ export async function diagnoseRoute(routeData) {
         throw e;
     }
 }
+
+/**
+ * Get current delay information.
+ * @returns {Promise<Array>} List of delayed railways
+ */
+export async function getCurrentDelays() {
+    try {
+        const res = await fetch(`${API_BASE}/api/delays/current`);
+        if (!res.ok) return [];
+        return await res.json();
+    } catch (e) {
+        console.error("Delay Info Error:", e);
+        return [];
+    }
+}

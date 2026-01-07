@@ -323,6 +323,7 @@ class RouteGraph:
                         "from": segment_start_name,
                         "to": self.station_info.get(path[i - 1], {}).get("name_ja", path[i - 1]),
                         "railway": railway_info.get("name_ja", current_railway),
+                        "railway_id": current_railway,
                         "type": "ride",
                         "theoretical_time": current_segment_time
                     })
@@ -360,6 +361,7 @@ class RouteGraph:
                     "from": segment_start_name,
                     "to": self.station_info.get(last_station, {}).get("name_ja", last_station),
                     "railway": railway_info.get("name_ja", current_railway),
+                    "railway_id": current_railway,
                     "type": "ride",
                     "theoretical_time": current_segment_time
                 })

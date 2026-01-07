@@ -10,6 +10,7 @@ from services.timetable.core import search_route_with_times
 from services.risk import get_route_risk, get_current_delays
 from services.venue import get_venue_warnings
 from services.score import calculate_route_scores
+from services.fare_scraper import FareScraper
 from datetime import datetime
 
 import json
@@ -208,6 +209,37 @@ def search_route_api(
         
         # Add Venue Warnings
         route["venue_warnings"] = get_venue_warnings(route.get("segments", []))
+
+        # Add Fare Info (Scraping)
+        # Extract via stations from segments
+        # Logic: If transfer happens, the station is a via point?
+        # Actually in search_route_with_times segments are:
+        # {from: A, to: B, type: ride}, {from: B, to: C, type: ride} ...
+        # If type is ride, we just need the end points of segments as via if they are intermediate.
+        # But wait, via is needed only for specific routing matching.
+        # For simplicity, let's pass major transfer stations?
+        # Or just pass []. Yahoo is smart enough to find best route, but we want SAME route.
+        # Let's extract transfer stations.
+        via_stations = []
+        seg_list = route.get("segments", [])
+        if len(seg_list) > 1:
+            for i in range(len(seg_list) - 1):
+                # The 'to' of a segment is 'from' of next. If it's a transfer point.
+                # In our data, segments are rides. So segregation implies transfer.
+                via_stations.append(seg_list[i]["to"])
+        
+        # Call Scraper (Synchronous for now, as per plan. Might correspond to user latency)
+        # To avoid too much latency, maybe limiter?
+        # User said "5 requests is fine".
+        fare_result = FareScraper.get_fare(
+            from_station=from_station, 
+            to_station=to_station, 
+            via_stations=via_stations
+        )
+        if fare_result and "total_fare" in fare_result:
+            route["fare"] = fare_result["total_fare"]
+        else:
+            route["fare"] = None
 
     # Calculate 3-axis scores (Speed, Comfort, Reliability)
     # Passed top_routes for relative speed comparison

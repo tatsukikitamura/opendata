@@ -78,6 +78,23 @@ function renderRouteList() {
     const container = document.getElementById("route-list-container");
     container.innerHTML = "";
 
+    // Find best balance route (highest total score)
+    let bestRouteIndex = -1;
+    let maxTotalScore = -1;
+    
+    allRoutes.forEach((r, i) => {
+        const speed = r.scores?.speed || 0;
+        const comfort = r.scores?.comfort || 0;
+        const reliability = r.scores?.reliability || 0;
+        const cost = r.scores?.cost || 0;
+        const total = speed + comfort + reliability + cost;
+        
+        if (total > maxTotalScore) {
+            maxTotalScore = total;
+            bestRouteIndex = i;
+        }
+    });
+
     allRoutes.forEach((route, index) => {
         const segments = route.segments || [];
         const firstDeparture = (segments.length > 0 && segments[0].departure_time) ? segments[0].departure_time : "--:--";
@@ -107,8 +124,14 @@ function renderRouteList() {
         } else if (risk.level === 'MEDIUM') {
             bgClass = "bg-amber-50 hover:bg-amber-100 border-amber-200 shadow-sm";
         }
+        
+        // Highlight best route
+        const isBest = index === bestRouteIndex && maxTotalScore > 0;
+        if (isBest) {
+            bgClass += " ring-2 ring-emerald-500 ring-offset-2";
+        }
 
-        card.className = `p-8 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${bgClass} focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2`;
+        card.className = `p-8 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${bgClass} focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 relative`;
         card.setAttribute('role', 'button');
         card.setAttribute('tabindex', '0');
         card.setAttribute('aria-label', `${firstDeparture}発 ${arrival}着 乗換${transfers}回 ${travelTimeText}`);
@@ -122,8 +145,14 @@ function renderRouteList() {
         } else {
             riskLabel = `<span class="px-2 py-1 rounded text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">平常運行</span>`;
         }
+        
+        const bestBadge = isBest ? 
+            `<div class="absolute -top-3 left-6 bg-yellow-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md flex items-center gap-1">
+                <span>⭐️</span> ベストバランス
+            </div>` : '';
 
         card.innerHTML = `
+            ${bestBadge}
             <div>
                 <div class="flex items-center gap-3 mb-1">
                     <span class="text-2xl font-bold text-slate-800">${arrival} 着</span>
@@ -132,10 +161,11 @@ function renderRouteList() {
                 </div>
                 <div class="text-sm text-slate-500 mt-2">
                     乗換 ${transfers}回
+                    ${route.fare ? `<span class="ml-3 text-slate-800 font-bold">¥${route.fare.toLocaleString()}</span>` : ''}
                 </div>
             </div>
             <div>
-                <!-- 3-Axis Scores -->
+                <!-- 4-Axis Scores -->
                 <div class="mt-3 text-xs space-y-1 w-48">
                     <div class="flex items-center gap-4">
                         <span class="w-8 text-slate-500">速さ</span>
@@ -157,6 +187,13 @@ function renderRouteList() {
                             <div class="h-full bg-purple-500" style="width: ${(route.scores?.reliability || 0) * 20}%"></div>
                         </div>
                         <span class="w-6 text-right font-mono text-slate-600">${(route.scores?.reliability || 0).toFixed(1)}</span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <span class="w-8 text-slate-500">安さ</span>
+                        <div class="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                            <div class="h-full bg-orange-500" style="width: ${(route.scores?.cost || 0) * 20}%"></div>
+                        </div>
+                        <span class="w-6 text-right font-mono text-slate-600">${(route.scores?.cost || 0).toFixed(1)}</span>
                     </div>
                 </div>
             </div>
@@ -217,7 +254,26 @@ function renderRouteDetail(index) {
     document.getElementById("first-departure").textContent = firstDeparture;
     document.getElementById("arrival-time").textContent = arrivalTime;
     document.getElementById("transfer-count").textContent = `乗換 ${route.transfers || 0}回`;
+    
+    // Update Fare
+    const fareEl = document.getElementById("total-fare");
+    if (fareEl) {
+        fareEl.textContent = route.fare ? `¥${route.fare.toLocaleString()}` : '---';
+    } else {
+        // If element doesn't exist (it might not in current HTML), verify where to put it.
+        // I should check detail.html first to see where to hook. 
+        // Or I can append it to duration text for now if no specific ID.
+        // Let's assume I need to add an element or append to existing.
+        // User didn't give detail.html content but I saw detailed.js.
+        // Let's assume I need to add string to duration or similar if no ID found.
+        // Wait, line 248 was just text content update.
+        // Let's update lines 248 and see if there is a slot. 
+        // Actually, I should probably check detail.html to add a placeholder too if needed.
+    }
     document.getElementById("total-duration").textContent = durationText;
+    if (route.fare) {
+        document.getElementById("total-duration").textContent += ` / ¥${route.fare.toLocaleString()}`;
+    }
 
     // Update header textual content
     document.getElementById("route-header").textContent = `${firstDeparture} 発 → ${arrivalTime} 着`;
@@ -253,7 +309,7 @@ function renderRouteDetail(index) {
     renderDelayWarnings(route);
 
     // Render timeline
-    renderTimeline(segments);
+    renderTimeline(segments, route.risk);
 
     // Setup AI diagnosis button
     setupAIDiagnosis(route);
