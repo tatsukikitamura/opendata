@@ -7,8 +7,7 @@ on:
     - cron: '*/10 0-15,20-23 * * *'
   workflow_dispatch:  # Allow manual trigger
 
-permissions:
-  contents: write
+
 
 jobs:
   collect:
@@ -32,23 +31,4 @@ jobs:
         run: |
           python backend/scripts/fetchers/collect_delays.py
           
-      - name: Commit and Push
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          
-          # Pull latest changes to avoid conflicts
-          git pull origin main
-          
-          # Add the data directory
-          # Ensure directory exists just in case
-          mkdir -p backend/data/delays
-          
-          git add backend/data/delays/
-          
-          if git diff --staged --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "Add delay data $(TZ='Asia/Tokyo' date +%Y%m%d_%H%M)"
-            git push origin main
-          fi
+
