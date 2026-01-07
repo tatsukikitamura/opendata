@@ -28,6 +28,7 @@ jobs:
         env:
           ODPT_ACCESS_TOKEN: ${{ secrets.ODPT_ACCESS_TOKEN }}
           ODPT_ACCESS_TOKEN_METRO: ${{ secrets.ODPT_ACCESS_TOKEN_METRO }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           python backend/scripts/fetchers/collect_delays.py
           
