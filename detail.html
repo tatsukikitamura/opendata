@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>検索結果 - ノー遅延乗り換え</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <script type="module" crossorigin src="/opendata/assets/detail-QfW8gJHA.js"></script>
+  <link rel="modulepreload" crossorigin href="/opendata/assets/api-D0nMKdtm.js">
+  <link rel="stylesheet" crossorigin href="/opendata/assets/api-DBQ-8LBh.css">
+</head>
+
+<body class="bg-slate-50 text-slate-800 font-sans antialiased">
+  
+  <!-- Simple Dot Pattern Background -->
+  <div class="min-h-screen flex flex-col items-center p-4 relative"
+      style="background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 24px 24px;">
+
+        <main class="w-full max-w-4xl z-10 py-8">
+
+            <!-- Back Link -->
+            <div class="mb-6" id="global-back-link">
+                <a href="/"
+                    class="text-slate-500 hover:text-slate-800 transition-colors flex items-center gap-2 text-sm font-bold opacity-70 hover:opacity-100">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                    検索に戻る
+                </a>
+            </div>
+
+            <!-- Main Panel -->
+            <div
+                class="glass-panel p-6 rounded-2xl shadow-sm border border-slate-200">
+
+                <!-- Header -->
+                <div class="text-center mb-6" id="main-header">
+                    <h1 class="text-2xl font-bold text-slate-800 mb-2" id="route-header">検索中...</h1>
+                    <p class="text-slate-500 text-sm" id="route-subheader"></p>
+                </div>
+
+                <!-- Loading State -->
+                <div id="loading-state" class="flex flex-col items-center py-12">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mb-4"></div>
+                    <p class="text-slate-500">時刻表を検索しています...</p>
+                </div>
+
+                <!-- Error State -->
+                <div id="error-state" class="hidden text-center py-12">
+                    <div class="text-6xl mb-4">😢</div>
+                    <h2 class="text-xl font-bold text-red-500 mb-2">ルートが見つかりませんでした</h2>
+                    <p class="text-slate-500 text-sm" id="error-message"></p>
+                </div>
+
+                <!-- Result State -->
+                <div id="result-state" class="hidden">
+                    
+                    <!-- View Mode: List vs Detail -->
+                    <!-- 1. Route List (Master View) -->
+                    <div id="route-list-view" class="space-y-3">
+                        <h2 class="text-slate-500 text-sm mb-4">経路候補を選択してください</h2>
+                        <div id="route-list-container" class="space-y-3">
+                            <!-- Dynamically populated route cards -->
+                        </div>
+                    </div>
+
+                    <!-- 2. Route Detail (Detail View) -->
+                    <div id="route-detail-view" class="hidden relative">
+                        <button id="back-to-list" class="mb-4 text-slate-500 hover:text-emerald-600 flex items-center gap-1 text-sm font-medium">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                            候補一覧に戻る
+                        </button>
+                        
+                        <!-- Header Summary -->
+                         <div id="route-summary-container" class="rounded-2xl p-5 mb-6 border">
+                            <div class="flex flex-col items-center">
+                                <div class="flex items-end gap-2 mb-2">
+                                    <div class="text-right">
+                                        <p class="text-xs text-slate-800 mb-1">出発</p>
+                                        <p class="text-4xl font-bold text-slate-800 leading-none" id="first-departure">--:--</p>
+                                    </div>
+                                    <div class="px-4 pb-2 text-slate-400">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                                        </svg>
+                                    </div>
+                                    <div class="text-left">
+                                        <p class="text-xs text-slate-800 mb-1">到着</p>
+                                        <p class="text-4xl font-bold text-emerald-600 leading-none" id="arrival-time">--:--</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-4 text-sm font-medium text-slate-600 mt-2">
+                                    <span id="total-duration" class="bg-white/50 px-3 py-1 rounded-full border border-slate-200/50">--分</span>
+                                    <span class="text-slate-300">|</span>
+                                    <span id="transfer-count">乗換 -回</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2-Column Layout: Timeline (Left) + Info (Right) -->
+                        <div class="flex flex-col lg:flex-row gap-6">
+                            
+                            <!-- Left Column: Timeline -->
+                            <div class="flex-1">
+                                <h3 class="text-slate-700 font-bold mb-4 border-b border-slate-200 pb-2">経路詳細</h3>
+                                <div class="space-y-0" id="route-timeline"></div>
+                            </div>
+
+                            <!-- Right Column: Supplementary Info -->
+                            <div class="flex-1">
+                                <h3 class="text-slate-700 font-bold mb-4 border-b border-slate-200 pb-2">路線情報</h3>
+                                <div id="delay-warnings" class="space-y-3"></div>
+                            </div>
+
+                        </div>
+
+                        <!-- AI Diagnosis Section -->
+                        <div class="mt-8 border-t border-slate-200 pt-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center gap-2">
+                                    <h3 class="text-slate-700 font-bold">AI遅延リスク診断</h3>
+                                </div>
+                                <button id="ai-diagnose-btn" 
+                                    class="px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-medium rounded-lg hover:from-purple-600 hover:to-indigo-600 transition-all shadow-md hover:shadow-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                                    </svg>
+                                    診断開始
+                                </button>
+                            </div>
+                            <div id="ai-diagnosis-result" class="hidden">
+                                <!-- AI diagnosis result will be rendered here -->
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </main>
+
+        <footer class="mt-8 text-slate-500 text-sm z-10">
+            公共交通オープンデータチャレンジ2025 プロトタイプ
+        </footer>
+
+    </div>
+</body>
+
+</html>

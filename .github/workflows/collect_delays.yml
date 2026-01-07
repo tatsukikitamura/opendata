@@ -1,0 +1,54 @@
+name: Collect Delay Data
+
+on:
+  schedule:
+    # Run every 10 minutes, but skip 01:00-04:00 JST (16:00-19:00 UTC)
+    # JST 05:00 = UTC 20:00. JST 00:59 = UTC 15:59.
+    - cron: '*/10 0-15,20-23 * * *'
+  workflow_dispatch:  # Allow manual trigger
+
+permissions:
+  contents: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install requests python-dotenv tzdata gtfs-realtime-bindings protobuf sqlalchemy psycopg2-binary
+
+      - name: Fetch TrainInformation and save
+        env:
+          ODPT_ACCESS_TOKEN: ${{ secrets.ODPT_ACCESS_TOKEN }}
+          ODPT_ACCESS_TOKEN_METRO: ${{ secrets.ODPT_ACCESS_TOKEN_METRO }}
+        run: |
+          python backend/scripts/fetchers/collect_delays.py
+          
+      - name: Commit and Push
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # Pull latest changes to avoid conflicts
+          git pull origin main
+          
+          # Add the data directory
+          # Ensure directory exists just in case
+          mkdir -p backend/data/delays
+          
+          git add backend/data/delays/
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Add delay data $(TZ='Asia/Tokyo' date +%Y%m%d_%H%M)"
+            git push origin main
+          fi
