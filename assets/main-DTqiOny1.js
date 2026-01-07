@@ -1,4 +1,4 @@
-import{g as v,a as g}from"./api-CUlB5ugs.js";let l=[];document.addEventListener("DOMContentLoaded",async()=>{p(),x(),b(),h(),l=await v(),m("from-station"),m("to-station")});async function h(){const t=document.getElementById("network-status-container");if(t)try{const e=await g();if(e.length===0)t.innerHTML=`
+import{g as v,a as g}from"./api-DVUU3mqz.js";/* empty css              */let l=[];document.addEventListener("DOMContentLoaded",async()=>{p(),x(),b(),h(),l=await v(),m("from-station"),m("to-station")});async function h(){const t=document.getElementById("network-status-container");if(t)try{const e=await g();if(e.length===0)t.innerHTML=`
                 <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex items-center gap-3 animate-fade-in">
                     <div class="bg-white p-2 rounded-full shadow-sm">
                         <span class="text-xl">✨</span>
