@@ -206,6 +206,6 @@ function setupSearchForm() {
         params.append("time", time);
 
         // Navigate to results page
-        window.location.href = `/detail.html?${params.toString()}`;
+        window.location.href = `./detail.html?${params.toString()}`;
     });
 }
