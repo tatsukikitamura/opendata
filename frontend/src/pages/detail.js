@@ -131,7 +131,7 @@ function renderRouteList() {
             bgClass += " ring-2 ring-emerald-500 ring-offset-2";
         }
 
-        card.className = `p-8 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${bgClass} focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 relative`;
+        card.className = `p-6 md:p-8 rounded-xl border transition-all cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-6 md:gap-0 ${bgClass} focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 relative`;
         card.setAttribute('role', 'button');
         card.setAttribute('tabindex', '0');
         card.setAttribute('aria-label', `${firstDeparture}発 ${arrival}着 乗換${transfers}回 ${travelTimeText}`);
@@ -153,10 +153,10 @@ function renderRouteList() {
 
         card.innerHTML = `
             ${bestBadge}
-            <div>
+            <div class="w-full md:w-auto">
                 <div class="flex items-center gap-3 mb-1">
                     <span class="text-2xl font-bold text-slate-800">${arrival} 着</span>
-                    <span class="text-sm text-slate-500">(${firstDeparture} 発)</span>
+                    <span class="text-sm text-slate-500 hidden md:inline">(${firstDeparture} 発)</span>
                     ${travelTimeText ? `<span class="text-sm font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">${travelTimeText}</span>` : ''}
                 </div>
                 <div class="text-sm text-slate-500 mt-2">
@@ -164,9 +164,9 @@ function renderRouteList() {
                     ${route.fare ? `<span class="ml-3 text-slate-800 font-bold">¥${route.fare.toLocaleString()}</span>` : ''}
                 </div>
             </div>
-            <div>
+            <div class="w-full md:w-auto flex justify-center md:block">
                 <!-- 4-Axis Scores -->
-                <div class="mt-3 text-xs space-y-1 w-48">
+                <div class="mt-0 md:mt-3 text-xs space-y-1 w-full md:w-48">
                     <div class="flex items-center gap-4">
                         <span class="w-8 text-slate-500">速さ</span>
                         <div class="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
@@ -197,9 +197,9 @@ function renderRouteList() {
                     </div>
                 </div>
             </div>
-            <div class="text-right">
-                ${riskLabel}
-                <div class="text-xs text-slate-400 mt-2 flex items-center justify-end gap-1">
+            <div class="w-full md:w-auto text-left md:text-right flex flex-row-reverse md:block justify-between items-center md:items-end">
+                <div class="md:mb-2">${riskLabel}</div>
+                <div class="text-xs text-slate-400 mt-0 md:mt-2 flex items-center justify-end gap-1">
                     詳細を見る
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />

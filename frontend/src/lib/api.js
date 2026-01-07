@@ -87,10 +87,10 @@ export async function diagnoseRoute(routeData) {
 export async function getCurrentDelays() {
     try {
         const res = await fetch(`${API_BASE}/api/delays/current`);
-        if (!res.ok) return [];
+        if (!res.ok) return { updated_at: null, delays: [] };
         return await res.json();
     } catch (e) {
         console.error("Delay Info Error:", e);
-        return [];
+        return { updated_at: null, delays: [] };
     }
 }

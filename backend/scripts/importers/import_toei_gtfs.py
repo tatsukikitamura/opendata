@@ -6,15 +6,16 @@ import os
 import csv
 import glob
 from pathlib import Path
+import sys
+
+# Configure paths
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
+
 from datetime import datetime
 from collections import defaultdict
 from sqlalchemy.orm import Session
 from db.database import SessionLocal, engine
 from db.models import Base, StationDeparture, StationOrder, StationInterval
-
-# Configure paths
-import sys
-sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
 BASE_DIR = Path(__file__).parent.parent.parent
 GTFS_DIR = BASE_DIR / "data" / "Toei-Train-GTFS"

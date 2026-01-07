@@ -26,18 +26,45 @@ async function renderNetworkStatus() {
     const container = document.getElementById("network-status-container");
     if (!container) return;
 
+    // Show skeleton immediately
+    container.innerHTML = `
+        <div class="bg-slate-50 border border-slate-100 rounded-xl p-4 flex items-center gap-3">
+             <div class="w-10 h-10 bg-slate-200 rounded-full animate-pulse"></div>
+             <div class="flex-1 space-y-2">
+                 <div class="h-4 bg-slate-200 rounded w-1/3 animate-pulse"></div>
+                 <div class="h-3 bg-slate-200 rounded w-2/3 animate-pulse"></div>
+             </div>
+        </div>
+    `;
+    container.classList.remove("hidden");
+
     try {
-        const delays = await getCurrentDelays();
+        const { updated_at, delays } = await getCurrentDelays();
+
+        let timeDisplay = "";
+        if (updated_at) {
+             try {
+                 const ts = new Date(updated_at);
+                 const m = ts.getMonth() + 1;
+                 const d = ts.getDate();
+                 const h = ts.getHours();
+                 const min = String(ts.getMinutes()).padStart(2, '0');
+                 timeDisplay = `${m}月${d}日 ${h}:${min} 現在`;
+             } catch (e) { console.error(e); }
+        }
         
         if (delays.length === 0) {
             container.innerHTML = `
-                <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex items-center gap-3 animate-fade-in">
+                <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex items-center gap-3 animate-fade-in relative">
                     <div class="bg-white p-2 rounded-full shadow-sm">
                         <span class="text-xl">✨</span>
                     </div>
-                    <div>
-                        <p class="font-bold text-emerald-800 text-sm">平常運行中</p>
-                        <p class="text-xs text-emerald-600">現在、主要路線で大きな遅延は発生していません。</p>
+                    <div class="flex-1">
+                        <div class="flex justify-between items-start">
+                             <p class="font-bold text-emerald-800 text-sm">平常運行中</p>
+                             ${timeDisplay ? `<span class="text-[10px] text-emerald-500 font-medium bg-emerald-100/50 px-2 py-0.5 rounded-full">${timeDisplay}</span>` : ''}
+                        </div>
+                        <p class="text-xs text-emerald-600 mt-0.5">主要路線で大きな遅延は発生していません</p>
                     </div>
                 </div>
             `;
@@ -49,13 +76,16 @@ async function renderNetworkStatus() {
             const namesList = uniqueRailways.join('、');
 
             container.innerHTML = `
-                <div class="bg-red-50 border border-red-100 rounded-xl p-4 animate-fade-in shadow-sm">
+                <div class="bg-red-50 border border-red-100 rounded-xl p-4 animate-fade-in shadow-sm relative">
                     <div class="flex items-center gap-3">
-                        <div class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse flex-shrink-0"></div>
-                        <div>
-                            <p class="font-bold text-red-800 text-sm">
-                                <span class="text-base mr-1">${uniqueRailways.length}</span>路線で遅延が発生しています
-                            </p>
+                        <div class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shrink-0"></div>
+                        <div class="flex-1">
+                            <div class="flex justify-between items-start">
+                                <p class="font-bold text-red-800 text-sm">
+                                    <span class="text-base mr-1">${uniqueRailways.length}</span>路線で遅延が発生しています
+                                </p>
+                                ${timeDisplay ? `<span class="text-[10px] text-red-500 font-medium bg-red-100/50 px-2 py-0.5 rounded-full">${timeDisplay}</span>` : ''}
+                            </div>
                             <p class="text-xs text-red-600 mt-0.5 leading-relaxed">
                                 ${namesList}
                             </p>
@@ -64,10 +94,14 @@ async function renderNetworkStatus() {
                 </div>
             `;
         }
-        
-        container.classList.remove("hidden");
     } catch (e) {
         console.error("Failed to render network status", e);
+        // On error, create a gentle error state or hide
+        container.innerHTML = `
+             <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center text-xs text-slate-400">
+                運行情報の取得に失敗しました
+             </div>
+        `;
     }
 }
 

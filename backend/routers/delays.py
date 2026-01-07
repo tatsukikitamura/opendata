@@ -7,7 +7,7 @@ router = APIRouter(
     tags=["Delays"]
 )
 
-@router.get("/current", response_model=List[dict])
+@router.get("/current")
 def get_current_delays_endpoint():
     """
     Get list of currently delayed railways.

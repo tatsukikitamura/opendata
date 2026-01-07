@@ -7,13 +7,16 @@ export default defineConfig({
     plugins: [
         tailwindcss(),
     ],
+    server: {
+        host: '0.0.0.0',
+    },
     build: {
         rollupOptions: {
             input: {
                 main: resolve(__dirname, 'index.html'),
                 detail: resolve(__dirname, 'detail.html'),
+                info: resolve(__dirname, 'info.html'),
             },
         },
     },
 });
-　

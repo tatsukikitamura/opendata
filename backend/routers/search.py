@@ -162,7 +162,8 @@ def search_route_api(
     top_routes = candidates[:5]
     
     # Get current real-time delays ONCE for all routes
-    current_delays = get_current_delays()
+    current_delays_data = get_current_delays()
+    current_delays = current_delays_data["delays"]
     current_delay_map = {d["railway_name"]: d for d in current_delays}
     
     # Clean up internal fields and add delay warnings

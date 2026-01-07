@@ -94,7 +94,8 @@ def get_route_risk(route: dict, departure_time: str) -> dict:
                 # Skip adding "normal" reasons to keep output clean
         
         # Check for current real-time delays
-        current_delays = get_current_delays()
+        current_delays_data = get_current_delays()
+        current_delays = current_delays_data["delays"]
         current_delayed_railways = {d["railway_name"] for d in current_delays}
         
         has_current_delay = bool(railways_checked & current_delayed_railways)
@@ -215,12 +216,15 @@ def _get_railway_stats(db: Session, railway_name: str) -> dict:
     }
 
 
-def get_current_delays() -> List[dict]:
+def get_current_delays() -> dict:
     """
     Get list of currently delayed railways based on most recent data.
     
     Returns:
-        List of dicts with railway info and delay reasons.
+        dict: {
+            "updated_at": str (ISO timestamp),
+            "delays": List[dict]
+        }
     """
     db = SessionLocal()
     
@@ -230,7 +234,7 @@ def get_current_delays() -> List[dict]:
         latest_ts = db.execute(latest_query).scalar()
         
         if not latest_ts:
-            return []
+            return {"updated_at": None, "delays": []}
         
         # Get all delayed records from latest fetch
         query = select(TrainStatus).where(
@@ -267,7 +271,7 @@ def get_current_delays() -> List[dict]:
                 "timestamp": r.timestamp
             })
             
-        return results
+        return {"updated_at": latest_ts, "delays": results}
         
     finally:
         db.close()

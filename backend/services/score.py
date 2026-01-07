@@ -92,15 +92,15 @@ def calculate_route_scores(route: dict, all_routes: list) -> dict:
         volume = crowd.get("score", 0)
         
         # Absolute Logic
-        # 0 - 50,000 -> 5.0 (Very Good)
-        # 250,000 -> 1.0 (Very Bad)
+        # 0 - 30,000 -> 5.0 (Very Good)
+        # 600,000 -> 1.0 (Very Bad)
         # Linear scaling
-        if volume <= 50000:
+        if volume <= 30000:
             base_score = 5.0
         else:
-            # Scale 50k - 250k to 5.0 - 1.0
-            # 5.0 - ((vol - 50000) / 200000 * 4.0)
-            base_score = 5.0 - ((volume - 50000) / 200000.0 * 4.0)
+            # Scale 30k - 600k to 5.0 - 1.0
+            # 5.0 - ((vol - 30000) / 570000 * 4.0)
+            base_score = 5.0 - ((volume - 30000) / 570000.0 * 4.0)
             
         base_comfort_scores.append(max(1.0, min(5.0, base_score)))
 
@@ -114,10 +114,10 @@ def calculate_route_scores(route: dict, all_routes: list) -> dict:
         my_crowd = route.get("crowd", {})
         my_volume = my_crowd.get("score", 0)
         
-        if my_volume <= 50000:
+        if my_volume <= 30000:
             my_base_score = 5.0
         else:
-            my_base_score = 5.0 - ((my_volume - 50000) / 200000.0 * 4.0)
+            my_base_score = 5.0 - ((my_volume - 30000) / 570000.0 * 4.0)
         my_base_score = max(1.0, min(5.0, my_base_score))
         
     except:

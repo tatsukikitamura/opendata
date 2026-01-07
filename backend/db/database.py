@@ -4,8 +4,15 @@ from sqlalchemy.orm import sessionmaker
 
 import os
 
+from dotenv import load_dotenv
+from pathlib import Path
+
 # Build path relative to this file's location to ensure consistency
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = Path(BASE_DIR).parent.parent
+
+# Load .env explicitly to ensure DATABASE_URL is available
+load_dotenv(PROJECT_ROOT / ".env")
 
 # Priority: Environment Variable > Local SQLite
 SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
