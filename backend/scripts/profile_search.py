@@ -73,3 +73,7 @@ def profile():
 
 if __name__ == "__main__":
     profile()
+    print("\n" + "=" * 50)
+    print("2回目（キャッシュ後）")
+    print("=" * 50 + "\n")
+    profile()

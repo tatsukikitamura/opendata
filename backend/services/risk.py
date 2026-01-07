@@ -15,7 +15,7 @@ from .constants import RAILWAY_JA_TO_EN, RAILWAY_EN_TO_JA, METRO_TOEI_RAILWAY_IN
 # Cache for current delays (avoid repeated DB queries)
 _current_delays_cache = None
 _current_delays_cache_time = None
-CACHE_TTL_SECONDS = 60  # Cache valid for 60 seconds
+CACHE_TTL_SECONDS = 300  # Cache valid for 300 seconds (5 minutes)
 
 
 def get_route_risk(route: dict, departure_time: str) -> dict:
