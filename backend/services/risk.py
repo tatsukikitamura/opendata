@@ -4,13 +4,18 @@ Risk Service - Calculate delay risk for routes based on historical train status 
 Uses TrainStatus records from odpt:TrainInformation API to calculate
 the probability of delays for each railway line.
 """
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 from db.database import SessionLocal
 from db.models import TrainStatus
 from .constants import RAILWAY_JA_TO_EN, RAILWAY_EN_TO_JA, METRO_TOEI_RAILWAY_INFO
+
+# Cache for current delays (avoid repeated DB queries)
+_current_delays_cache = None
+_current_delays_cache_time = None
+CACHE_TTL_SECONDS = 60  # Cache valid for 60 seconds
 
 
 def get_route_risk(route: dict, departure_time: str) -> dict:
@@ -142,83 +147,85 @@ def _normalize_railway_name(railway: str) -> str:
     return railway
 
 
+# Cache for railway stats (avoid repeated expensive queries)
+_railway_stats_cache = {}
+_railway_stats_cache_time = None
+STATS_CACHE_TTL_SECONDS = 300  # Cache valid for 5 minutes (historical data doesn't change often)
+
+
 def _get_railway_stats(db: Session, railway_name: str) -> dict:
     """
-    Get delay statistics for a railway.
-    Groups continuous delay records into single events to avoid over-counting.
+    Get delay statistics for a railway using SQL aggregation.
+    Results are cached for STATS_CACHE_TTL_SECONDS.
     
     Returns:
         dict: {
-            "total_checks": int,  # Total number of observations
-            "delay_events": int,  # Number of distinct delay events
+            "total": int,  # Total number of observations
+            "delayed": int,  # Number of delayed records
             "latest_reason": str
         }
     """
-    # Query matching railway_name
+    global _railway_stats_cache, _railway_stats_cache_time
+    
+    # Check cache
+    now = datetime.now()
+    if _railway_stats_cache_time is not None:
+        if (now - _railway_stats_cache_time).total_seconds() < STATS_CACHE_TTL_SECONDS:
+            if railway_name in _railway_stats_cache:
+                return _railway_stats_cache[railway_name]
+    else:
+        # Reset cache if expired
+        _railway_stats_cache = {}
+        _railway_stats_cache_time = now
+    
     # Handle full ID (odpt.Railway:JR-East.Tokaido) -> Tokaido
     simple_name = railway_name.split(".")[-1] if "." in railway_name else railway_name
     
-    query = select(TrainStatus).where(
+    # Use SQL aggregation instead of fetching all records
+    # Count total records
+    total_query = select(func.count()).select_from(TrainStatus).where(
         TrainStatus.railway_name == simple_name
-    ).order_by(TrainStatus.timestamp)
+    )
+    total_count = db.execute(total_query).scalar() or 0
     
-    records = db.execute(query).scalars().all()
+    if total_count == 0:
+        result = {"total": 0, "delayed": 0, "latest_reason": ""}
+        _railway_stats_cache[railway_name] = result
+        return result
     
-    total_checks = len(records)
-    if total_checks == 0:
-        return {"total": 0, "delayed": 0, "latest_reason": ""}
-
-    # Calculate distinct delay events
-    delay_events = 0
-    last_delay_time = None
+    # Count delayed records
+    delayed_query = select(func.count()).select_from(TrainStatus).where(
+        TrainStatus.railway_name == simple_name,
+        TrainStatus.is_delayed == True
+    )
+    delayed_count = db.execute(delayed_query).scalar() or 0
+    
+    # Get latest reason (only if there are delays)
     latest_reason = ""
+    if delayed_count > 0:
+        reason_query = select(TrainStatus.status_text).where(
+            TrainStatus.railway_name == simple_name,
+            TrainStatus.is_delayed == True
+        ).order_by(TrainStatus.timestamp.desc()).limit(1)
+        latest_reason = db.execute(reason_query).scalar() or ""
     
-    # Threshold to consider as same event (e.g., 60 minutes)
-    SAME_EVENT_THRESHOLD_MIN = 60
-    
-    from datetime import datetime, timedelta
-    
-    delayed_records = [r for r in records if r.is_delayed]
-    
-    for r in delayed_records:
-        # Update latest reason
-        if r.status_text:
-            latest_reason = r.status_text
-            
-        try:
-            # Parse timestamp (ISO format)
-            # Handle potential Z suffix or offset
-            ts_str = r.timestamp.replace("Z", "+00:00")
-            current_time = datetime.fromisoformat(ts_str)
-            
-            if last_delay_time is None:
-                # First delay found
-                delay_events += 1
-                last_delay_time = current_time
-            else:
-                # Check time difference
-                diff = current_time - last_delay_time
-                if diff.total_seconds() / 60 > SAME_EVENT_THRESHOLD_MIN:
-                    # New event
-                    delay_events += 1
-                    last_delay_time = current_time
-                else:
-                    # Continuation of same event, just update time
-                    last_delay_time = current_time
-                    
-        except ValueError:
-            continue
-            
-    return {
-        "total": total_checks,
-        "delayed": delay_events,
+    result = {
+        "total": total_count,
+        "delayed": delayed_count,
         "latest_reason": latest_reason
     }
+    
+    # Save to cache
+    _railway_stats_cache[railway_name] = result
+    _railway_stats_cache_time = now
+    
+    return result
 
 
 def get_current_delays() -> dict:
     """
     Get list of currently delayed railways based on most recent data.
+    Results are cached for CACHE_TTL_SECONDS to improve performance.
     
     Returns:
         dict: {
@@ -226,6 +233,14 @@ def get_current_delays() -> dict:
             "delays": List[dict]
         }
     """
+    global _current_delays_cache, _current_delays_cache_time
+    
+    # Check cache
+    now = datetime.now()
+    if _current_delays_cache is not None and _current_delays_cache_time is not None:
+        if (now - _current_delays_cache_time).total_seconds() < CACHE_TTL_SECONDS:
+            return _current_delays_cache
+    
     db = SessionLocal()
     
     try:
@@ -270,8 +285,13 @@ def get_current_delays() -> dict:
                 "status_text": r.status_text,
                 "timestamp": r.timestamp
             })
-            
-        return {"updated_at": latest_ts, "delays": results}
+        
+        # Save to cache
+        result = {"updated_at": latest_ts, "delays": results}
+        _current_delays_cache = result
+        _current_delays_cache_time = datetime.now()
+        
+        return result
         
     finally:
         db.close()
