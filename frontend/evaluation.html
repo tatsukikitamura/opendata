@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>評価基準について - ノー遅延乗り換え</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="bg-slate-50 text-slate-800 font-sans antialiased selection:bg-emerald-500 selection:text-white">
+
+  <!-- Simple Dot Pattern Background -->
+  <div class="min-h-screen p-4 relative"
+       style="background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 24px 24px;">
+
+    <main class="w-full max-w-2xl mx-auto z-10 py-8">
+      
+      <!-- Back Button -->
+      <a href="./" class="inline-flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors mb-8">
+        <span>←</span>
+        <span>検索に戻る</span>
+      </a>
+
+      <!-- Header -->
+      <div class="mb-8">
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900 mb-2">
+          ルート評価基準について
+        </h1>
+        <p class="text-slate-500">「ノー遅延乗り換え」が提示する4つの評価軸（スコア）の算出方法を解説します。</p>
+      </div>
+
+      <!-- Intro -->
+      <section class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6">
+        <p class="text-slate-600 leading-relaxed">
+          当サービスでは、単なる「所要時間」だけでなく、<strong>快適さ</strong>や<strong>遅延リスク</strong>、<strong>コスト</strong>を含めた多角的な視点でルートを評価し、5段階のスコア（5.0点満点）で表示しています。
+        </p>
+      </section>
+
+      <!-- Speed -->
+      <section class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xl">
+            🚀
+          </div>
+          <h2 class="text-xl font-bold text-slate-900">速さ (Speed)</h2>
+        </div>
+        <p class="text-sm text-slate-600 mb-4">
+          検索された候補の中で、<strong>最も所要時間が短いルート</strong>を基準（5.0点）として相対的に評価します。
+        </p>
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 mb-4">
+          <p class="font-bold text-xs text-slate-500 mb-2 uppercase tracking-wide">算出式</p>
+          <code class="text-sm font-mono text-blue-700 bg-blue-50 px-2 py-1 rounded block w-full mb-2">
+            スコア = 5.0 × ( 最短所要時間 ÷ このルートの所要時間 )
+          </code>
+          <p class="text-xs text-slate-500">
+            例：最短ルートが30分で到着する場合、所要時間60分のルートは <br>
+            5.0 × (30 ÷ 60) = <strong>2.5点</strong> となります。
+          </p>
+        </div>
+        <div class="space-y-3">
+          <div class="flex justify-between items-center text-sm">
+            <span class="font-bold text-blue-600">5.0点</span>
+            <span class="text-slate-500">最速のルート</span>
+          </div>
+          <div class="w-full bg-slate-200 rounded-full h-2">
+            <div class="bg-blue-500 h-2 rounded-full" style="width: 100%"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Comfort -->
+      <section class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xl">
+            🌱
+          </div>
+          <h2 class="text-xl font-bold text-slate-900">快適 (Comfort)</h2>
+        </div>
+        <p class="text-sm text-slate-600 mb-4">
+          <strong>駅の1日平均乗降客数データ</strong>を基に、空いているルートほど高得点となります。
+        </p>
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 mb-4">
+          <p class="font-bold text-xs text-slate-500 mb-2 uppercase tracking-wide">算出基準</p>
+          <ul class="text-sm text-slate-600 space-y-1 mb-2">
+            <li>• <strong>乗降客数 3万人以下</strong>： <span class="font-bold text-emerald-600">5.0点</span> (最高)</li>
+            <li>• <strong>乗降客数 60万人以上</strong>： <span class="font-bold text-slate-400">1.0点</span> (最低)</li>
+          </ul>
+          <p class="text-xs text-slate-500">
+            ※ 複数の候補がある場合、偏差値を用いて相対的にスコアを調整（補正）しています。人が少ないマイナーなルートほど高評価になります。
+          </p>
+        </div>
+        <div class="space-y-3">
+          <div class="flex justify-between items-center text-sm">
+            <span class="font-bold text-emerald-600">5.0点</span>
+            <span class="text-slate-500">閑散とした駅・路線（座れる可能性大）</span>
+          </div>
+          <div class="w-full bg-slate-200 rounded-full h-2">
+            <div class="bg-emerald-500 h-2 rounded-full" style="width: 100%"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Reliability -->
+      <section class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold text-xl">
+            🛡️
+          </div>
+          <h2 class="text-xl font-bold text-slate-900">安定 (Reliability)</h2>
+        </div>
+        <p class="text-sm text-slate-600 mb-4">
+          <strong>過去の遅延発生率</strong>を減点方式で反映します。現在のリアルタイム運行情報も考慮されます。
+        </p>
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 mb-4">
+          <p class="font-bold text-xs text-slate-500 mb-2 uppercase tracking-wide">算出式</p>
+          <code class="text-sm font-mono text-purple-700 bg-purple-50 px-2 py-1 rounded block w-full mb-2">
+            スコア = 5.0 - ( 最大遅延発生率[%] )
+          </code>
+          <p class="text-xs text-slate-500">
+            例：経由する路線のうち、最も遅延が多い路線の遅延率が <strong>2.0%</strong> の場合<br>
+            5.0 - 2.0 = <strong>3.0点</strong> となります。
+            <br>
+            <span class="text-red-500 mt-1 block">※ 現在現実に遅延が発生している場合は、強制的に低スコアになります。</span>
+          </p>
+        </div>
+        <div class="space-y-3">
+           <ul class="space-y-3 text-sm">
+             <li class="flex items-start gap-2">
+               <span class="text-purple-600 font-bold shrink-0">5.0点</span>
+               <span class="text-slate-600">遅延率 0% (ほぼ遅延なし)</span>
+             </li>
+             <li class="flex items-start gap-2">
+               <span class="text-purple-600 font-bold shrink-0">3.0点</span>
+               <span class="text-slate-600">遅延率 2% (50回に1回程度遅延)</span>
+             </li>
+           </ul>
+        </div>
+      </section>
+
+      <!-- Cost -->
+      <section class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold text-xl">
+            💰
+          </div>
+          <h2 class="text-xl font-bold text-slate-900">安さ (Cost)</h2>
+        </div>
+        <p class="text-sm text-slate-600 mb-4">
+          候補の中で<strong>最も運賃が安いルート</strong>を基準（5.0点）として相対的に評価します。
+        </p>
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 mb-4">
+          <p class="font-bold text-xs text-slate-500 mb-2 uppercase tracking-wide">算出式</p>
+          <code class="text-sm font-mono text-orange-700 bg-orange-50 px-2 py-1 rounded block w-full mb-2">
+            スコア = 5.0 × ( 最安運賃 ÷ このルートの運賃 )
+          </code>
+          <p class="text-xs text-slate-500">
+            例：最安ルートが500円の場合、運賃1000円のルートは <br>
+            5.0 × (500 ÷ 1000) = <strong>2.5点</strong> となります。
+          </p>
+        </div>
+        <div class="space-y-3">
+          <div class="flex justify-between items-center text-sm">
+            <span class="font-bold text-orange-600">5.0点</span>
+            <span class="text-slate-500">最安のルート</span>
+          </div>
+          <div class="w-full bg-slate-200 rounded-full h-2">
+            <div class="bg-orange-500 h-2 rounded-full" style="width: 100%"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <footer class="text-center text-slate-400 text-sm pt-8">
+        <p>© 2025 ノー遅延乗り換え</p>
+      </footer>
+
+    </main>
+  </div>
+
+</body>
+
+</html>

@@ -3,6 +3,12 @@ import requests
 from bs4 import BeautifulSoup
 import urllib.parse
 from typing import Optional, List, Dict
+from datetime import datetime
+
+# Fare cache with TTL
+_fare_cache = {}
+_fare_cache_time = None
+FARE_CACHE_TTL = 3600  # 1 hour - fares don't change often
 
 class FareScraper:
     BASE_URL = "https://transit.yahoo.co.jp/search/print"
@@ -18,6 +24,22 @@ class FareScraper:
         return:
             Dict with "total_fare" (int) and other details, or None on error
         """
+        global _fare_cache, _fare_cache_time
+        
+        # Check cache validity
+        now = datetime.now()
+        if _fare_cache_time is not None:
+            if (now - _fare_cache_time).total_seconds() > FARE_CACHE_TTL:
+                _fare_cache = {}  # Clear expired cache
+                _fare_cache_time = now
+        else:
+            _fare_cache_time = now
+        
+        # Create cache key
+        cache_key = (from_station, to_station, tuple(via_stations))
+        if cache_key in _fare_cache:
+            return _fare_cache[cache_key]
+        
         try:
             # URL Encoding
             from_enc = urllib.parse.quote(from_station)
@@ -60,14 +82,18 @@ class FareScraper:
                 total_fare = int(match.group(1).replace(',', ''))
             else:
                 total_fare = 0
-                
-            return {
+            
+            result = {
                 "from": from_station,
                 "to": to_station,
                 "via": via_stations,
                 "total_fare": total_fare,
                 "fare_raw": fare_text
             }
+            
+            # Store in cache
+            _fare_cache[cache_key] = result
+            return result
 
         except Exception as e:
             print(f"[FareScraper] Exception: {e}")

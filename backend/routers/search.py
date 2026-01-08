@@ -25,6 +25,7 @@ if os.path.exists(STATS_FILE):
     with open(STATS_FILE, "r", encoding="utf-8") as f:
         STATION_STATS = json.load(f)
 
+
 def get_crowd_metrics(route_segments):
     """
     Calculate route crowdedness based on station volume.
@@ -53,8 +54,6 @@ def get_crowd_metrics(route_segments):
     
     for station in stations:
         # Simple lookup (exact match)
-        # Verify if mapped station name needs normalization? 
-        # The search uses Japanese names (e.g. "東京"), stats usage Japanese keys.
         vol = STATION_STATS.get(station, 0)
         if vol > 0:
             total_volume += vol
@@ -116,23 +115,17 @@ def search_route_api(
     candidates = []
     
     # Find theoretical routes first
-    # limit=5, logic is now internal to find_routes (Buffer Variation + Penalty)
     theoretical_routes = graph.find_routes(from_station, to_station, limit=5)
     
     # Determine weekday type
     now = datetime.now()
     if now.weekday() >= 6: # Sunday (0=Mon, 6=Sun)
-        # Check for Holiday calendar logic? 
-        # Python weekday: Mon=0 ... Sun=6
-        # Usually Sat=5, Sun=6.
         weekday_type = "Holiday"
     elif now.weekday() == 5: # Saturday
         weekday_type = "Saturday"
     else:
-        # Check for national holidays? (Advanced)
-        # For now, simplistic Weekday.
         weekday_type = "Weekday"
-        
+    
     for route_result in theoretical_routes:
         # Apply timetable
         timed_result = search_route_with_times(
@@ -170,19 +163,64 @@ def search_route_api(
     current_date = datetime.now().date().isoformat()
     departure_time_str = f"{current_date}T{search_time}"
 
+    # Import mapping for Japanese to English railway names (once)
+    from services.constants import RAILWAY_JA_TO_EN
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    
+    # Prepare data for parallel processing
+    route_via_stations = []
     for route in top_routes:
+        via_stations = []
+        seg_list = route.get("segments", [])
+        if len(seg_list) > 1:
+            for i in range(len(seg_list) - 1):
+                via_stations.append(seg_list[i]["to"])
+        route_via_stations.append(via_stations)
+    
+    # OPTIMIZATION: Run get_route_risk and FareScraper.get_fare in parallel
+    risk_results = [None] * len(top_routes)
+    fare_results = [None] * len(top_routes)
+    
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        # Submit risk calculations
+        risk_futures = {
+            executor.submit(get_route_risk, route, departure_time_str): idx 
+            for idx, route in enumerate(top_routes)
+        }
+        # Submit fare scraping requests
+        fare_futures = {
+            executor.submit(FareScraper.get_fare, from_station, to_station, via): idx
+            for idx, via in enumerate(route_via_stations)
+        }
+        
+        # Collect risk results
+        for future in as_completed(risk_futures):
+            idx = risk_futures[future]
+            try:
+                risk_results[idx] = future.result()
+            except Exception as e:
+                print(f"[ERROR] get_route_risk[{idx}]: {e}")
+                risk_results[idx] = {"score": 0, "level": "UNKNOWN", "reasons": []}
+        
+        # Collect fare results
+        for future in as_completed(fare_futures):
+            idx = fare_futures[future]
+            try:
+                fare_results[idx] = future.result()
+            except Exception as e:
+                print(f"[ERROR] FareScraper[{idx}]: {e}")
+                fare_results[idx] = None
+    
+    # Apply results to routes and add other metadata
+    for idx, route in enumerate(top_routes):
         route.pop("_arrival", None)
         
-        # Add risk score (includes delay reasons from HISTORICAL data)
-        risk_data = get_route_risk(route, departure_time_str)
-        route["risk"] = risk_data
+        # Apply pre-computed risk data
+        route["risk"] = risk_results[idx]
         
         # Get REAL-TIME delay warnings for railways in this route
         delay_warnings = []
         route_railways = set()
-        
-        # Import mapping for Japanese to English railway names
-        from services.constants import RAILWAY_JA_TO_EN
         
         for seg in route.get("segments", []):
             railway = seg.get("railway", "")
@@ -211,39 +249,14 @@ def search_route_api(
         # Add Venue Warnings
         route["venue_warnings"] = get_venue_warnings(route.get("segments", []))
 
-        # Add Fare Info (Scraping)
-        # Extract via stations from segments
-        # Logic: If transfer happens, the station is a via point?
-        # Actually in search_route_with_times segments are:
-        # {from: A, to: B, type: ride}, {from: B, to: C, type: ride} ...
-        # If type is ride, we just need the end points of segments as via if they are intermediate.
-        # But wait, via is needed only for specific routing matching.
-        # For simplicity, let's pass major transfer stations?
-        # Or just pass []. Yahoo is smart enough to find best route, but we want SAME route.
-        # Let's extract transfer stations.
-        via_stations = []
-        seg_list = route.get("segments", [])
-        if len(seg_list) > 1:
-            for i in range(len(seg_list) - 1):
-                # The 'to' of a segment is 'from' of next. If it's a transfer point.
-                # In our data, segments are rides. So segregation implies transfer.
-                via_stations.append(seg_list[i]["to"])
-        
-        # Call Scraper (Synchronous for now, as per plan. Might correspond to user latency)
-        # To avoid too much latency, maybe limiter?
-        # User said "5 requests is fine".
-        fare_result = FareScraper.get_fare(
-            from_station=from_station, 
-            to_station=to_station, 
-            via_stations=via_stations
-        )
+        # Apply pre-computed fare data
+        fare_result = fare_results[idx]
         if fare_result and "total_fare" in fare_result:
             route["fare"] = fare_result["total_fare"]
         else:
             route["fare"] = None
 
     # Calculate 3-axis scores (Speed, Comfort, Reliability)
-    # Passed top_routes for relative speed comparison
     for route in top_routes:
         route["scores"] = calculate_route_scores(route, top_routes)
     

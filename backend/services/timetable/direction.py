@@ -6,6 +6,9 @@ from typing import Optional
 from sqlalchemy.orm import Session
 from db.models import StationOrder
 
+# Cache for station order lookups (reset per request)
+_station_order_cache = {}
+
 
 def get_expected_direction(db: Session, railway_name: str, from_station: str, to_station: str) -> Optional[str]:
     """
@@ -16,8 +19,12 @@ def get_expected_direction(db: Session, railway_name: str, from_station: str, to
         "Inbound" if to_station has lower index
         None if cannot determine
     """
-    # Helper to find station order
+    # Helper to find station order with caching
     def find_order(name: str):
+        cache_key = (railway_name, name)
+        if cache_key in _station_order_cache:
+            return _station_order_cache[cache_key]
+        
         rec = db.query(StationOrder).filter(
             StationOrder.railway_name == railway_name,
             StationOrder.station_name == name
@@ -28,6 +35,8 @@ def get_expected_direction(db: Session, railway_name: str, from_station: str, to
                 StationOrder.railway_name == railway_name,
                 StationOrder.station_name == name.replace("-", "")
             ).first()
+        
+        _station_order_cache[cache_key] = rec
         return rec
 
     from_record = find_order(from_station)

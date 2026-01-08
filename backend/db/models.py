@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, Float, Boolean
+from sqlalchemy import Column, String, Integer, Float, Boolean, Index
 from .database import Base
 
 class StationDeparture(Base):
@@ -13,8 +13,14 @@ class StationDeparture(Base):
     departure_time = Column(String, index=True)
     train_type = Column(String)
     destination_station = Column(String)
-    train_number = Column(String)
+    train_number = Column(String, index=True)  # Added index!
     weekday_type = Column(String, index=True)
+    
+    # Composite indexes for common query patterns
+    __table_args__ = (
+        Index('ix_departure_lookup', 'train_number', 'station_name', 'weekday_type'),
+        Index('ix_station_railway_time', 'station_name', 'railway_name', 'departure_time', 'weekday_type'),
+    )
 
 class StationOrder(Base):
     __tablename__ = "station_orders"

@@ -198,9 +198,11 @@ class RouteGraph:
         
         # Step 1: Variable Transfer Buffer Strategy
         # 0: Fastest (accept transfers)
+        # 3: Slight transfer avoidance
         # 5: Balanced (standard)
-        # 10: Minimum transfers (1 transfer = 10min penalty)
-        buffers = [0, 5, 10]
+        # 8: Prefer fewer transfers
+        # 12: Strongly avoid transfers
+        buffers = [0, 3, 6, 10, 15]
         
         for buf in buffers:
             if len(routes) >= limit:
@@ -232,8 +234,8 @@ class RouteGraph:
                 penalty_edges.add((v, u))
 
         # Try to find more routes until we hit the limit
-        # We allow up to known retries to find distinct paths
-        extra_attempts = (limit - len(routes)) * 2
+        # Limited to 2 attempts since penalty method is expensive
+        extra_attempts = 2  
         
         for _ in range(extra_attempts):
             if len(routes) >= limit:
@@ -248,7 +250,6 @@ class RouteGraph:
             
             if not path_ids or path_ids in seen_paths:
                 # If we found duplicates despite penalties, force penalize this path heavily
-                # (Existing logic handles this somewhat by accumulating penalties, but let's be explicit)
                 path_list = result.get("path_ids", [])
                 for i in range(len(path_list) - 1):
                     u, v = path_list[i], path_list[i+1]
