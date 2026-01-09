@@ -139,11 +139,16 @@ class RouteGraph:
             heapq.heappush(pq, (0, start, 0))
             parent[start] = (None, 0, 0)
 
-        visited = set()
-        
         while pq:
             total_time, current, transfers = heapq.heappop(pq)
 
+            # Optimization: Skip if we found a better path already
+            # parent store: (prev_station, total_time, transfers)
+            # If current total_time is worse than what's recorded in parent, skip.
+            # Note: The start node has 0 in parent, so this check works for it too (0 > 0 is False).
+            # For other nodes, if we popped (10, B) but parent[B] is (A, 5), we skip.
+            if current in parent and total_time > parent[current][1]:
+                continue                
             if current in to_set:
                 # Reconstruct path from parent chain
                 path = []
@@ -154,14 +159,8 @@ class RouteGraph:
                 path.reverse()
                 return self._build_result(path, total_time, transfers, transfer_buffer)
 
-            if current in visited:
-                continue
-            visited.add(current)
-
             for edge in self.edges[current]:
                 next_station = edge["to"]
-                if next_station in visited:
-                    continue
 
                 edge_time = edge["time"]
                 
@@ -181,6 +180,7 @@ class RouteGraph:
                 new_time = total_time + edge_time
                 
                 # Only add if we haven't found a better path to this station
+                # or if it's the first time reaching this station
                 if next_station not in parent or new_time < parent[next_station][1]:
                     parent[next_station] = (current, new_time, new_transfers)
                     heapq.heappush(pq, (new_time, next_station, new_transfers))

@@ -244,8 +244,10 @@ def get_current_delays() -> dict:
     db = SessionLocal()
     
     try:
-        # Get most recent timestamp
-        latest_query = select(func.max(TrainStatus.timestamp))
+        # Get most recent timestamp efficiently
+        # Optimizing: func.max() can be slow on large tables if not optimized by DB.
+        # ORDER BY timestamp DESC LIMIT 1 is often faster with an index.
+        latest_query = select(TrainStatus.timestamp).order_by(TrainStatus.timestamp.desc()).limit(1)
         latest_ts = db.execute(latest_query).scalar()
         
         if not latest_ts:

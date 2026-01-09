@@ -309,7 +309,7 @@ function renderRouteDetail(index) {
     renderDelayWarnings(route);
 
     // Render timeline
-    renderTimeline(segments, route.risk);
+    renderTimeline(segments, route.risk, route.delay_warnings);
 
     // Setup AI diagnosis button
     setupAIDiagnosis(route);

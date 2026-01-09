@@ -1,6 +1,6 @@
 import { getLineColor } from '../lib/utils.js';
 
-export function renderTimeline(segments, risk = null) {
+export function renderTimeline(segments, risk = null, delayWarnings = []) {
     const timeline = document.getElementById("route-timeline");
     if (!timeline) return;
     
@@ -23,6 +23,19 @@ export function renderTimeline(segments, risk = null) {
                 else if (risk.level === 'MEDIUM') lineColor = "bg-amber-500";
             }
         }
+
+        // Check for real-time delays (Override risk color with high priority)
+        // User requested to remove pink highlight for delays (2025-01-08)
+        /*
+        if (delayWarnings && delayWarnings.length > 0 && segment.railway_id) {
+            const shortName = segment.railway_id.split(".").pop();
+            // Use railway_id (short code) for reliable matching
+            const delayed = delayWarnings.find(w => w.railway_id === shortName);
+            if (delayed) {
+                lineColor = "bg-pink-600"; // Distinct color for real-time delays
+            }
+        }
+        */
         
         // --- 1. Station Row (Start or Transfer) ---
         const stationRow = document.createElement("div");
@@ -46,7 +59,7 @@ export function renderTimeline(segments, risk = null) {
         let iconHTML = "";
         if (index === 0) {
             // Start "発" badge
-             iconHTML = `<div class="w-6 h-6 bg-slate-800 text-white rounded-sm font-bold text-xs flex items-center justify-center z-10 shadow-md">発</div>`;
+            iconHTML = `<div class="w-6 h-6 bg-slate-800 text-white rounded-sm font-bold text-xs flex items-center justify-center z-10 shadow-md">発</div>`;
         } else {
             // Transfer Circle
             iconHTML = `<div class="w-4 h-4 bg-white border-2 border-slate-400 rounded-full z-10 shadow-sm"></div>`;

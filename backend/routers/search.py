@@ -126,29 +126,59 @@ def search_route_api(
     else:
         weekday_type = "Weekday"
     
-    for route_result in theoretical_routes:
-        # Apply timetable
-        timed_result = search_route_with_times(
-            db, route_result, search_time, weekday_type,
-            transfer_buffer=5, station_name_map=station_map
-        )
+    # Import mapping for Japanese to English railway names (once)
+    from services.constants import RAILWAY_JA_TO_EN
+    from concurrent.futures import ThreadPoolExecutor
+    
+    # Prepare common variables for tasks
+    current_date = datetime.now().date().isoformat()
+    departure_time_str = f"{current_date}T{search_time}"
+
+    # Use ThreadPoolExecutor for speculative execution
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        for route_result in theoretical_routes:
+            # Apply timetable
+            timed_result = search_route_with_times(
+                db, route_result, search_time, weekday_type,
+                transfer_buffer=5, station_name_map=station_map
+            )
+            
+            if "error" in timed_result:
+                continue
         
-        if "error" in timed_result:
-            continue
-        
-        # Skip routes with incomplete timetable data (null departure times)
-        segments = timed_result.get("segments", [])
-        has_null_departure = any(seg.get("departure_time") is None for seg in segments)
-        if has_null_departure:
-            continue
-        
-        # Get arrival time for sorting
-        if segments:
-            last_seg = next((s for s in reversed(segments) if s.get("arrival_time")), None)
-            if last_seg:
-                arrival = last_seg.get("arrival_time", "99:99")
-                timed_result["_arrival"] = arrival
-                candidates.append(timed_result)
+            # Skip routes with incomplete timetable data (null departure times)
+            segments = timed_result.get("segments", [])
+            has_null_departure = any(seg.get("departure_time") is None for seg in segments)
+            if has_null_departure:
+                continue
+            
+            # --- Speculative Execution Start ---
+            # Submit auxiliary tasks immediately to run consistently with other route searches
+            
+            # Prepare arguments for FareScraper
+            via_stations = []
+            seg_list = timed_result.get("segments", [])
+            if len(seg_list) > 1:
+                for i in range(len(seg_list) - 1):
+                    via_stations.append(seg_list[i]["to"])
+            
+            # Submit Risk Calculation
+            _risk_future = executor.submit(get_route_risk, timed_result, departure_time_str)
+            timed_result["_risk_future"] = _risk_future
+            
+            # Submit Fare Scraping
+            # Note: We need to pass a copy or ensure immutability if needed, but strings/lists here are fine.
+            _fare_future = executor.submit(FareScraper.get_fare, from_station, to_station, via_stations)
+            timed_result["_fare_future"] = _fare_future
+            # --- Speculative Execution End ---
+            
+            # Get arrival time for sorting
+            if segments:
+                last_seg = next((s for s in reversed(segments) if s.get("arrival_time")), None)
+                if last_seg:
+                    arrival = last_seg.get("arrival_time", "99:99")
+                    timed_result["_arrival"] = arrival
+                    candidates.append(timed_result)
     
     # Sort by arrival time
     candidates.sort(key=lambda x: x.get("_arrival", "99:99"))
@@ -157,66 +187,55 @@ def search_route_api(
     # Get current real-time delays ONCE for all routes
     current_delays_data = get_current_delays()
     current_delays = current_delays_data["delays"]
-    current_delay_map = {d["railway_name"]: d for d in current_delays}
+    current_delay_map = {}
+    for d in current_delays:
+        # Normalize key to match route segment logic (English short code)
+        raw = d["railway_name_en"]
+        key = raw
+        if "." in raw:
+            key = raw.split(".")[-1]
+        current_delay_map[key] = d
     
-    # Clean up internal fields and add delay warnings
-    current_date = datetime.now().date().isoformat()
-    departure_time_str = f"{current_date}T{search_time}"
 
-    # Import mapping for Japanese to English railway names (once)
-    from services.constants import RAILWAY_JA_TO_EN
-    from concurrent.futures import ThreadPoolExecutor, as_completed
     
-    # Prepare data for parallel processing
-    route_via_stations = []
+    
+    # ---------------------------------------------------------
+    # Retrieve Results from Futures for Top Routes
+    # ---------------------------------------------------------
+    
+    # Collect risk results
     for route in top_routes:
-        via_stations = []
-        seg_list = route.get("segments", [])
-        if len(seg_list) > 1:
-            for i in range(len(seg_list) - 1):
-                via_stations.append(seg_list[i]["to"])
-        route_via_stations.append(via_stations)
-    
-    # OPTIMIZATION: Run get_route_risk and FareScraper.get_fare in parallel
-    risk_results = [None] * len(top_routes)
-    fare_results = [None] * len(top_routes)
-    
-    with ThreadPoolExecutor(max_workers=6) as executor:
-        # Submit risk calculations
-        risk_futures = {
-            executor.submit(get_route_risk, route, departure_time_str): idx 
-            for idx, route in enumerate(top_routes)
-        }
-        # Submit fare scraping requests
-        fare_futures = {
-            executor.submit(FareScraper.get_fare, from_station, to_station, via): idx
-            for idx, via in enumerate(route_via_stations)
-        }
-        
-        # Collect risk results
-        for future in as_completed(risk_futures):
-            idx = risk_futures[future]
+        future = route.pop("_risk_future", None)
+        if future:
             try:
-                risk_results[idx] = future.result()
+                route["risk"] = future.result()
             except Exception as e:
-                print(f"[ERROR] get_route_risk[{idx}]: {e}")
-                risk_results[idx] = {"score": 0, "level": "UNKNOWN", "reasons": []}
-        
-        # Collect fare results
-        for future in as_completed(fare_futures):
-            idx = fare_futures[future]
+                print(f"[ERROR] get_route_risk task failed: {e}")
+                route["risk"] = {"score": 0, "level": "UNKNOWN", "reasons": []}
+        else:
+            route["risk"] = {"score": 0, "level": "UNKNOWN", "reasons": []}
+
+    # Collect fare results
+    for route in top_routes:
+        future = route.pop("_fare_future", None)
+        if future:
             try:
-                fare_results[idx] = future.result()
+                fare_result = future.result()
+                if fare_result and "total_fare" in fare_result:
+                    route["fare"] = fare_result["total_fare"]
+                else:
+                    route["fare"] = None
             except Exception as e:
-                print(f"[ERROR] FareScraper[{idx}]: {e}")
-                fare_results[idx] = None
+                print(f"[ERROR] FareScraper task failed: {e}")
+                route["fare"] = None
+        else:
+            route["fare"] = None
     
     # Apply results to routes and add other metadata
     for idx, route in enumerate(top_routes):
         route.pop("_arrival", None)
         
-        # Apply pre-computed risk data
-        route["risk"] = risk_results[idx]
+
         
         # Get REAL-TIME delay warnings for railways in this route
         delay_warnings = []
@@ -237,6 +256,7 @@ def search_route_api(
                 delay_info = current_delay_map[railway_name]
                 delay_warnings.append({
                     "railway": delay_info.get("railway_name", railway_name),
+                    "railway_id": delay_info.get("railway_name_en", ""), # Use short code/EN name as ID for matching
                     "status": delay_info.get("status", ""),
                     "reason": delay_info.get("status_text", "遅延情報あり"),
                     "timestamp": delay_info.get("timestamp", "")
@@ -249,12 +269,7 @@ def search_route_api(
         # Add Venue Warnings
         route["venue_warnings"] = get_venue_warnings(route.get("segments", []))
 
-        # Apply pre-computed fare data
-        fare_result = fare_results[idx]
-        if fare_result and "total_fare" in fare_result:
-            route["fare"] = fare_result["total_fare"]
-        else:
-            route["fare"] = None
+
 
     # Calculate 3-axis scores (Speed, Comfort, Reliability)
     for route in top_routes:

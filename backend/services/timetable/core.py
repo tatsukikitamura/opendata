@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 from sqlalchemy.orm import Session
 from .finder import find_train_for_segment, get_arrival_time
 from .utils import time_to_minutes, minutes_to_time
+from services.constants import RAILWAY_JA_TO_EN
 
 
 def search_route_with_times(
@@ -93,6 +94,7 @@ def search_route_with_times(
                 "from": from_station_ja,
                 "to": to_station_ja,
                 "railway": railway,
+                "railway_id": train.get("railway") or RAILWAY_JA_TO_EN.get(railway, railway),
                 "departure_time": train["departure_time"],
                 "arrival_time": arrival_time or current_time_str,  # Add arrival time
                 "train_type": train["train_type"],
@@ -118,6 +120,7 @@ def search_route_with_times(
                 "from": from_station_ja,
                 "to": to_station_ja,
                 "railway": railway,
+                "railway_id": RAILWAY_JA_TO_EN.get(railway, railway),
                 "departure_time": None,
                 "note": note
             })
