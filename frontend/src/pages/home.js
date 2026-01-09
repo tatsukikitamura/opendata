@@ -285,6 +285,12 @@ function setupSearchForm() {
             return;
         }
 
+        // 同じ駅が選択されている場合はエラー
+        if (fromStation === toStation) {
+            alert("出発駅と到着駅が同じです。異なる駅を選択してください。");
+            return;
+        }
+
         // Build URL params
         const params = new URLSearchParams();
         params.append("from", fromStation);
