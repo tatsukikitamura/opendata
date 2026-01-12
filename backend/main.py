@@ -1,16 +1,12 @@
+"""
+Main FastAPI application entry point.
+"""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from dotenv import load_dotenv
-import os
-from pathlib import Path
 
-# Load .env from project root
-BASE_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = BASE_DIR.parent
-load_dotenv(PROJECT_ROOT / ".env")
-
-from routers import search, stations, ai
+from core.config import get_allowed_origins
+from routers import search, stations, ai, delays
 from services.routing import initialize_graph
 from db.database import engine
 from db.models import Base
@@ -21,30 +17,17 @@ Base.metadata.create_all(bind=engine)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize route graph on startup
+    """Application lifespan handler - initialize resources on startup."""
     initialize_graph()
     yield
 
 
 app = FastAPI(lifespan=lifespan)
 
-import os
-
 # CORS configuration
-# origins_str = os.getenv("ALLOWED_ORIGINS", "*")
-# origins = [origin.strip() for origin in origins_str.split(",") if origin.strip()]
-
-# For safety, default to "*" (allow all) only if explicitly set or if ALLOWED_ORIGINS is missing/empty in dev.
-# In production, ALLOWED_ORIGINS should be set to "https://<user>.github.io".
-allowed_origins_env = os.getenv("ALLOWED_ORIGINS")
-if allowed_origins_env:
-    origins = [origin.strip() for origin in allowed_origins_env.split(",") if origin.strip()]
-else:
-    origins = ["*"]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=get_allowed_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -52,15 +35,12 @@ app.add_middleware(
 
 # Include routers
 app.include_router(search.router, tags=["Search"])
-
 app.include_router(stations.router, tags=["Stations"])
-
 app.include_router(ai.router, tags=["AI"])
-
-from routers import delays
 app.include_router(delays.router)
 
 
 @app.get("/")
 def read_root():
+    """Health check endpoint."""
     return {"message": "Train Route Search API is running"}

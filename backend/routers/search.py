@@ -87,6 +87,7 @@ def search_route_api(
     from_station: str = Query(..., description="Departure station"),
     to_station: str = Query(..., description="Arrival station"),
     time: str = Query(..., description="Departure time (HH:MM)"),
+    day_type: str = Query(None, description="Day type (Weekday, Saturday, Holiday)"),
     db: Session = Depends(get_db)
 ):
     """
@@ -117,14 +118,17 @@ def search_route_api(
     # Find theoretical routes first
     theoretical_routes = graph.find_routes(from_station, to_station, limit=5)
     
-    # Determine weekday type
-    now = datetime.now()
-    if now.weekday() >= 6: # Sunday (0=Mon, 6=Sun)
-        weekday_type = "Holiday"
-    elif now.weekday() == 5: # Saturday
-        weekday_type = "Saturday"
+    # Determine weekday type from parameter or auto-detect
+    if day_type and day_type in ["Weekday", "Saturday", "Holiday"]:
+        weekday_type = day_type
     else:
-        weekday_type = "Weekday"
+        now = datetime.now()
+        if now.weekday() >= 6: # Sunday (0=Mon, 6=Sun)
+            weekday_type = "Holiday"
+        elif now.weekday() == 5: # Saturday
+            weekday_type = "Saturday"
+        else:
+            weekday_type = "Weekday"
     
     # Import mapping for Japanese to English railway names (once)
     from services.constants import RAILWAY_JA_TO_EN

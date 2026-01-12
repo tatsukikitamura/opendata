@@ -19,11 +19,15 @@ export async function checkBackendHealth() {
  * @param {string} from - Departure station
  * @param {string} to - Arrival station
  * @param {string} time - Departure time (HH:MM)
+ * @param {string} [dayType] - Day type (Weekday, Saturday, Holiday)
  * @returns {Promise<Object>} Object with routes array
  */
-export async function searchRoute(from, to, time) {
+export async function searchRoute(from, to, time, dayType = null) {
     try {
-        const url = `${API_BASE}/search?from_station=${encodeURIComponent(from)}&to_station=${encodeURIComponent(to)}&time=${encodeURIComponent(time)}`;
+        let url = `${API_BASE}/search?from_station=${encodeURIComponent(from)}&to_station=${encodeURIComponent(to)}&time=${encodeURIComponent(time)}`;
+        if (dayType) {
+            url += `&day_type=${encodeURIComponent(dayType)}`;
+        }
         const res = await fetch(url);
         const data = await res.json();
         return data;

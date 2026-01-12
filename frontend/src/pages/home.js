@@ -6,12 +6,87 @@ import { getStations, getCurrentDelays } from '../lib/api.js';
 
 let allStations = [];
 
+// 日本の祝日データ (2025-2026年)
+const JAPAN_HOLIDAYS = new Set([
+    // 2025年
+    "2025-01-01", // 元日
+    "2025-01-13", // 成人の日
+    "2025-02-11", // 建国記念の日
+    "2025-02-23", // 天皇誕生日
+    "2025-02-24", // 振替休日
+    "2025-03-20", // 春分の日
+    "2025-04-29", // 昭和の日
+    "2025-05-03", // 憲法記念日
+    "2025-05-04", // みどりの日
+    "2025-05-05", // こどもの日
+    "2025-05-06", // 振替休日
+    "2025-07-21", // 海の日
+    "2025-08-11", // 山の日
+    "2025-09-15", // 敬老の日
+    "2025-09-23", // 秋分の日
+    "2025-10-13", // スポーツの日
+    "2025-11-03", // 文化の日
+    "2025-11-23", // 勤労感謝の日
+    "2025-11-24", // 振替休日
+    // 2026年
+    "2026-01-01", // 元日
+    "2026-01-12", // 成人の日
+    "2026-02-11", // 建国記念の日
+    "2026-02-23", // 天皇誕生日
+    "2026-03-20", // 春分の日
+    "2026-04-29", // 昭和の日
+    "2026-05-03", // 憲法記念日
+    "2026-05-04", // みどりの日
+    "2026-05-05", // こどもの日
+    "2026-05-06", // 振替休日
+    "2026-07-20", // 海の日
+    "2026-08-11", // 山の日
+    "2026-09-21", // 敬老の日
+    "2026-09-22", // 国民の休日
+    "2026-09-23", // 秋分の日
+    "2026-10-12", // スポーツの日
+    "2026-11-03", // 文化の日
+    "2026-11-23", // 勤労感謝の日
+]);
+
+/**
+ * 日付から曜日種別を取得
+ * @param {string} dateStr - YYYY-MM-DD 形式
+ * @returns {string} "Weekday" | "Saturday" | "Holiday"
+ */
+function getDayType(dateStr) {
+    const date = new Date(dateStr);
+    const dayOfWeek = date.getDay(); // 0=日曜, 6=土曜
+    
+    if (JAPAN_HOLIDAYS.has(dateStr) || dayOfWeek === 0) {
+        return "Holiday";
+    } else if (dayOfWeek === 6) {
+        return "Saturday";
+    } else {
+        return "Weekday";
+    }
+}
+
+/**
+ * 日本語で曜日種別を取得
+ */
+function getDayTypeJa(dayType) {
+    switch (dayType) {
+        case "Holiday": return "🎌 祝日・休日ダイヤ";
+        case "Saturday": return "📅 土曜ダイヤ";
+        case "Weekday": return "📊 平日ダイヤ";
+        default: return "";
+    }
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
-    // Set default time to current time
+    // Set default date and time
+    setCurrentDate();
     setCurrentTime();
     
     setupTimeButtons();
     setupSearchForm();
+    setupDateInput();
     
     // Render network status immediately
     renderNetworkStatus();
@@ -21,6 +96,35 @@ document.addEventListener("DOMContentLoaded", async () => {
     setupAutocomplete("from-station");
     setupAutocomplete("to-station");
 });
+
+function setCurrentDate() {
+    const dateInput = document.getElementById("departure-date");
+    if (dateInput) {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        dateInput.value = `${yyyy}-${mm}-${dd}`;
+        updateDayTypeHint(dateInput.value);
+    }
+}
+
+function updateDayTypeHint(dateStr) {
+    const hint = document.getElementById("day-type-hint");
+    if (hint && dateStr) {
+        const dayType = getDayType(dateStr);
+        hint.textContent = getDayTypeJa(dayType);
+    }
+}
+
+function setupDateInput() {
+    const dateInput = document.getElementById("departure-date");
+    if (dateInput) {
+        dateInput.addEventListener("change", () => {
+            updateDayTypeHint(dateInput.value);
+        });
+    }
+}
 
 async function renderNetworkStatus() {
     const container = document.getElementById("network-status-container");
@@ -278,9 +382,10 @@ function setupSearchForm() {
         // Get values
         const fromStation = document.getElementById("from-station").value;
         const toStation = document.getElementById("to-station").value;
+        const date = document.getElementById("departure-date").value;
         const time = document.getElementById("departure-time").value;
 
-        if (!fromStation || !toStation || !time) {
+        if (!fromStation || !toStation || !date || !time) {
             alert("全ての項目を入力してください");
             return;
         }
@@ -291,11 +396,16 @@ function setupSearchForm() {
             return;
         }
 
+        // Get day type from date
+        const dayType = getDayType(date);
+
         // Build URL params
         const params = new URLSearchParams();
         params.append("from", fromStation);
         params.append("to", toStation);
         params.append("time", time);
+        params.append("date", date);
+        params.append("day_type", dayType);
 
         // Navigate to results page
         window.location.href = `./detail.html?${params.toString()}`;

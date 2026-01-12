@@ -11,6 +11,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const fromStation = params.get("from");
     const toStation = params.get("to");
     const time = params.get("time");
+    const dayType = params.get("day_type");
 
     if (!fromStation || !toStation || !time) {
         showError("出発駅、到着駅、時刻を指定してください。");
@@ -21,7 +22,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("route-header").textContent = `${fromStation} → ${toStation}`;
     document.getElementById("route-subheader").textContent = `${time} 以降の電車を検索中...`;
 
-    await executeSearch(fromStation, toStation, time);
+    await executeSearch(fromStation, toStation, time, dayType);
 
     // Back to list button handler
     document.getElementById("back-to-list").addEventListener("click", () => {
@@ -29,9 +30,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 });
 
-async function executeSearch(from, to, time) {
+async function executeSearch(from, to, time, dayType = null) {
     try {
-        const data = await searchRoute(from, to, time);
+        const data = await searchRoute(from, to, time, dayType);
 
         if (!data.routes || data.routes.length === 0) {
             showError("ルートが見つかりませんでした。");
@@ -345,13 +346,13 @@ function renderDelayWarnings(route) {
                 class="w-full flex items-center justify-between p-4 ${c.headerBg} transition-colors"
                 aria-expanded="${defaultOpen}"
                 aria-controls="accordion-content-${id}"
-                onclick="this.setAttribute('aria-expanded', this.getAttribute('aria-expanded') === 'true' ? 'false' : 'true'); document.getElementById('accordion-content-${id}').classList.toggle('hidden');"
+                id="accordion-btn-${id}"
             >
                 <div class="flex items-center gap-2">
                     <span class="text-xl">${icon}</span>
                     <span class="font-bold ${c.header}">${title}</span>
                 </div>
-                <svg class="w-5 h-5 ${c.header} transition-transform" style="transform: rotate(${defaultOpen ? '180deg' : '0deg'});" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5 ${c.header} transition-transform duration-200 ${defaultOpen ? 'rotate-180' : ''}" id="accordion-icon-${id}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
             </button>
@@ -359,14 +360,56 @@ function renderDelayWarnings(route) {
                 ${content}
             </div>
         `;
+
+        // Add click handler with proper icon rotation
+        const btn = section.querySelector(`#accordion-btn-${id}`);
+        btn.addEventListener('click', () => {
+            const isExpanded = btn.getAttribute('aria-expanded') === 'true';
+            const newState = !isExpanded;
+            btn.setAttribute('aria-expanded', newState);
+            
+            const icon = section.querySelector(`#accordion-icon-${id}`);
+            const contentEl = section.querySelector(`#accordion-content-${id}`);
+            
+            if (newState) {
+                icon.classList.add('rotate-180');
+                contentEl.classList.remove('hidden');
+            } else {
+                icon.classList.remove('rotate-180');
+                contentEl.classList.add('hidden');
+            }
+        });
+
         return section;
     }
 
     let hasContent = false;
 
-    // 1. Real-time Delay Warnings (🚨 最重要 - デフォルトで開く)
+    // ===== 共通カードテンプレート =====
+    const createInfoCard = (title, subtitle, colorClass = 'slate') => `
+        <div class="bg-white/60 rounded-lg p-3 border border-${colorClass}-100">
+            <p class="font-medium text-${colorClass}-800">${title}</p>
+            <p class="text-xs text-slate-500 mt-1">${subtitle}</p>
+        </div>
+    `;
+
+    const createSuccessCard = (title, subtitle) => `
+        <div class="bg-white/60 rounded-lg p-3 border border-emerald-100 flex items-center gap-3">
+            <div class="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center shrink-0">
+                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+            </div>
+            <div>
+                <p class="font-medium text-emerald-800">${title}</p>
+                <p class="text-xs text-slate-500">${subtitle}</p>
+            </div>
+        </div>
+    `;
+
+    // ===== 1. リアルタイム運行情報 (📡) =====
+    hasContent = true;
     if (realTimeWarnings.length > 0) {
-        hasContent = true;
         const content = realTimeWarnings.map(warning => {
             let timeDisplay = "";
             if (warning.timestamp) {
@@ -378,56 +421,42 @@ function renderDelayWarnings(route) {
             return `
                 <div class="bg-white/60 rounded-lg p-3 border border-red-100 mb-2 last:mb-0">
                     <div class="flex items-center justify-between">
-                        <p class="text-red-800 font-medium">${warning.railway}</p>
+                        <p class="font-medium text-red-800">${warning.railway}</p>
                         ${timeDisplay ? `<span class="text-xs text-red-400">${timeDisplay}</span>` : ''}
                     </div>
-                    <p class="text-red-700/80 text-sm mt-1">${warning.reason || "遅延が発生しています"}</p>
+                    <p class="text-xs text-slate-500 mt-1">${warning.reason || "遅延が発生しています"}</p>
                 </div>
             `;
         }).join('');
-        container.appendChild(createAccordion('realtime', '🚨', `リアルタイム遅延 (${realTimeWarnings.length}件)`, 'red', content, true));
+        container.appendChild(createAccordion('realtime', '📡', `運行情報 (${realTimeWarnings.length}件の遅延)`, 'red', content, true));
+    } else {
+        const content = createSuccessCard('平常運行', '現在、すべての路線で遅延は発生していません');
+        container.appendChild(createAccordion('realtime', '📡', '運行情報', 'emerald', content, false));
     }
 
-    // 2. Predictive Risk (⚠️ リスク情報を常に表示)
+    // ===== 2. 遅延リスク予測 (📊) =====
     {
         hasContent = true;
         const colorScheme = risk.level === 'HIGH' ? 'red' : risk.level === 'MEDIUM' ? 'amber' : 'emerald';
-        const levelText = risk.level === 'HIGH' ? '高い' : risk.level === 'MEDIUM' ? '中程度' : '低い';
+        const levelText = risk.level === 'HIGH' ? '高リスク' : risk.level === 'MEDIUM' ? '注意' : '低リスク';
 
         let content = '';
 
         if (risk.reasons.length > 0) {
             content = `
-                <p class="text-xs text-slate-500 mb-2">過去の遅延実績データに基づく予測:</p>
+                <p class="text-xs text-slate-500 mb-2">過去の遅延データに基づく予測:</p>
                 <div class="space-y-2">
-                    ${risk.reasons.map(r => `
-                        <div class="bg-white/60 rounded-lg p-3 border border-current/10">
-                            <p class="font-medium text-sm">${r.railway || ''}</p>
-                            <p class="text-xs text-slate-600 mt-1">${r.rate || r.display || ''}</p>
-                        </div>
-                    `).join('')}
+                    ${risk.reasons.map(r => createInfoCard(r.railway || '', r.rate || r.display || '', colorScheme)).join('')}
                 </div>
             `;
         } else {
-            content = `
-                <div class="bg-white/60 rounded-lg p-3 border border-emerald-100 flex items-center gap-3">
-                    <div class="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
-                        <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                        </svg>
-                    </div>
-                    <div>
-                        <p class="font-medium text-emerald-800">通常運転</p>
-                        <p class="text-xs text-slate-500">過去の遅延実績データに問題はありません</p>
-                    </div>
-                </div>
-            `;
+            content = createSuccessCard('リスクなし', '過去の遅延データに問題は見つかりませんでした');
         }
 
-        container.appendChild(createAccordion('risk', '⚠️', `遅延リスク: ${levelText}`, colorScheme, content, risk.level !== 'LOW'));
+        container.appendChild(createAccordion('risk', '📊', `遅延リスク: ${levelText}`, colorScheme, content, risk.level !== 'LOW'));
     }
 
-    // 3. Venue Warnings (🎪 イベント情報)
+    // ===== 3. 周辺イベント情報 (📍) =====
     const allVenues = [...venueWarnings.transfer_warnings, ...venueWarnings.passing_info];
     if (allVenues.length > 0) {
         hasContent = true;
@@ -435,43 +464,42 @@ function renderDelayWarnings(route) {
 
         if (venueWarnings.transfer_warnings.length > 0) {
             content += `
-                <p class="text-xs text-orange-600 font-medium mb-2">⚠️ 乗換駅周辺</p>
-                ${venueWarnings.transfer_warnings.map(w => `
-                    <div class="bg-white/60 rounded-lg p-3 border border-orange-100 mb-2">
-                        <p class="font-medium text-orange-900">📍 ${w.station}駅 → ${w.venue}</p>
-                        <p class="text-xs text-slate-500 mt-1">収容人数: ${w.capacity.toLocaleString()}人 / ${w.note}</p>
-                    </div>
-                `).join('')}
+                <p class="text-xs text-amber-600 font-medium mb-2">乗換駅周辺</p>
+                <div class="space-y-2 mb-3">
+                    ${venueWarnings.transfer_warnings.map(w => 
+                        createInfoCard(`${w.station}駅 → ${w.venue}`, `収容人数: ${w.capacity.toLocaleString()}人 / ${w.note}`, 'amber')
+                    ).join('')}
+                </div>
             `;
         }
 
         if (venueWarnings.passing_info.length > 0) {
             content += `
-                <p class="text-xs text-slate-500 mt-3 mb-2">ℹ️ 通過駅周辺</p>
+                <p class="text-xs text-slate-500 mb-2">通過駅周辺</p>
                 <p class="text-sm text-slate-600">${venueWarnings.passing_info.map(p => `${p.station}(${p.venues.join(', ')})`).join(' / ')}</p>
             `;
         }
 
-        container.appendChild(createAccordion('venue', '🎪', `イベント情報 (${allVenues.length}件)`, 'orange', content, false));
+        container.appendChild(createAccordion('venue', '📍', `周辺イベント (${allVenues.length}件)`, 'amber', content, false));
     }
 
-    // 4. Crowd Info (📊 駅混雑度)
+    // ===== 4. 駅混雑度 (📊) =====
     if (crowd.level !== 'UNKNOWN' && crowd.details && crowd.details.length > 0) {
         hasContent = true;
-        const levelLabel = crowd.level === 'HIGH' ? '大都市圏' : crowd.level === 'MEDIUM' ? '中規模' : '郊外';
+        const colorScheme = crowd.level === 'HIGH' ? 'amber' : 'slate';
+        const levelLabel = crowd.level === 'HIGH' ? '混雑' : crowd.level === 'MEDIUM' ? '普通' : '空いている';
 
         const content = `
-            <div class="flex items-center gap-3 mb-3">
-                <div class="text-2xl font-bold text-blue-800">${crowd.score.toLocaleString()}</div>
-                <div class="text-xs text-slate-500">人/日<br>(平均乗降客数)</div>
-                <span class="ml-auto px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">${levelLabel}</span>
-            </div>
-            <div class="text-xs text-slate-500">
-                <p class="font-medium mb-1">経由駅の規模:</p>
-                <p>${crowd.details.join(', ')}</p>
+            <div class="bg-white/60 rounded-lg p-3 border border-${colorScheme}-100">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="text-xl font-bold text-slate-800">${crowd.score.toLocaleString()}</div>
+                    <div class="text-xs text-slate-500">人/日 (平均)</div>
+                    <span class="ml-auto px-2 py-1 text-xs font-medium bg-${colorScheme}-100 text-${colorScheme}-700 rounded-full">${levelLabel}</span>
+                </div>
+                <p class="text-xs text-slate-500">経路: ${crowd.details.join(' → ')}</p>
             </div>
         `;
-        container.appendChild(createAccordion('crowd', '📊', '駅混雑度', 'blue', content, false));
+        container.appendChild(createAccordion('crowd', '📊', `経路の混雑度: ${levelLabel}`, colorScheme, content, false));
     }
 
     // If no content, show a positive "normal operation" message
