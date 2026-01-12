@@ -2,23 +2,73 @@
 
 [![Contest](https://img.shields.io/badge/公共交通オープンデータチャレンジ-2025-blue?style=for-the-badge)](https://challenge2025.odpt.org/)
 
-> **🛡️ 絶対に遅刻できないあなたのための乗換案内**  
-> 過去の運行データから遅延リスクを予測し、「安全に到着できるルート」を提案します。
+
+> **「今の時間は平常通りです」...その言葉を信じて遅刻したことはありませんか？**
+> 
+> 既存の乗換案内は「現在」の遅延しか教えてくれません。しかし、私たちは**未来**を予測します。
+> 過去の膨大な運行データから**今の平穏に隠れた遅延リスク**を暴き出し、「絶対に遅刻できないあなた」を目的地まで安全に送り届ける。それが『ノー遅延乗り換え』です。
 
 ---
 
 ## 本番サイト
 
-**[https://opendata.tatsuki.dev](https://opendata.tatsuki.dev)**
+<div align="center">
 
-<p align="center">
-  <img src="docs/landing_page.png" width="300" alt="トップ画面">
-  <img src="docs/route_detail.png" width="300" alt="経路詳細画面">
-</p>
+**[👉 https://opendata.tatsuki.dev](https://opendata.tatsuki.dev)**
+
+<img src="docs/index.png" width="48%" alt="トップ画面" style="border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+<img src="docs/route_list.png" width="48%" alt="検索画面" style="border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+<img src="docs/route_detail.png" width="48%" alt="経路詳細画面" style="border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+
+</div>
 
 ---
 
-##  使い方ガイド
+##  コンテストに向けた技術的挑戦
+
+本アプリケーションは、既存のAPIをラップしただけのツールではありません。
+**「いかに速く着くか」ではなく「いかに確実に着くか」** という問いに答えるため、以下のコア技術を**フルスクラッチで独自実装**しました。
+
+### 1. 独自実装のグラフ探索エンジン（脱・既存API）
+通常の乗換案内APIでは「最短経路」が優先され、「少し遠回りでもリスクの低いルート」を柔軟に探すことは困難です。そこで、私たちはグラフ構造の構築から探索アルゴリズム（Dijkstra法）までを完全に内製化しました。
+
+- **動的ウェイト制御**:
+    - 距離や時間だけでなく、「乗り換えの複雑さ」「混雑イベント」「過去の遅延傾向」をコストとして重み付け。
+    - **「時間はかかるが、絶対に座れて遅延も少ない地下鉄ルート」** のような提案を可能にしました。
+- **ペナルティ法による強制迂回**:
+    - 通常の探索で見つかった主要ルートに仮想的なペナルティを与えて再探索することで、**物理的に異なる代替ルート（迂回路）** を強制的に導出。事故で主要幹線が全滅した際も、生き残っているルートを即座に提示します。
+
+### 2. 未来のリスクを可視化する "Predictive Risk Engine"
+「今、遅れていない」ことは「これからも遅れない」ことを保証しません。
+
+- **独自のデータ蓄積**:
+    - オープンデータAPIを継続的に監視し、**数ヶ月にわたるリアルタイム遅延データ**を蓄積・解析。
+- **リスクの数値化**:
+    - 「金曜日、xx線のxx時台は遅延確率が30%上がる」といった傾向を統計的に導出し、**現在は正常運行でも、到着予定時刻に遅延するリスクが高いルート**には警告を出します。
+
+### 3. AIコンシェルジュによる意思決定支援
+数字だけでは伝わらない「現場の空気感」を伝えるため、生成AI (GPT-4o-mini) を統合しました。
+- 「このルートは乗換回数は少ないですが、イベント終了後のドーム周辺を通るため、避けた方が無難です」
+
+といった、**コンシェルジュのような定性的なアドバイス**を提供します。
+
+---
+
+## 機能ハイライト
+
+### ユーザーの意思決定を支える「4軸スコアリング」
+単一の正解を押し付けることはしません。4つの指標でルートを評価し、ユーザーの状況に合わせて選べるようにしています。
+
+| 指標 | 説明 |
+|---|---|
+| **速さ** | 単純な所要時間。急いでいる時に。 |
+| **快適** | 混雑度や乗り換え回数を考慮。疲れている時に。 |
+| **安定** | 過去の統計に基づく遅延リスクの低さ。重要な予定の時に。 |
+| **安さ** | 運賃の安さ。 |
+
+---
+
+## 📖 使い方ガイド
 
 ### Step 1: 出発駅・到着駅を入力
 トップ画面で出発駅と到着駅を入力します。クイック設定ボタンで時刻をワンタップ選択できます。
@@ -27,103 +77,69 @@
 「🛡️ 安全なルートを検索」ボタンをタップすると、複数のルート候補が表示されます。
 
 ### Step 3: ルートを比較
-各ルートには4つのスコアが表示されます:
-- **速さ** ⏱️ : 所要時間
-- **快適** 🛋️ : 混雑度・乗り換えの楽さ
-- **安定** 🛡️ : 遅延リスクの低さ（独自指標）
-- **安さ** 💰 : 運賃
+スコアやAIのアドバイスを参考にルートを選びます。
 
 ### Step 4: 詳細を確認
 「詳細を見る」で経路のタイムラインを表示。リスクの高い区間は色で強調されます。
 
 ---
 
-## 技術的な独自性
-
-### 1. 完全独自の経路探索エンジン
-既存のAPIをラップするのではなく、**グラフ構造の構築から探索アルゴリズム（ダイクストラ法）までをフルスクラッチで独自実装**しました。これにより、通常の乗換案内APIでは不可能な、柔軟なルート提案を実現しています。
-
-- **乗り換え抵抗の動的制御**
-  - 「最短時間」だけでなく、「時間はかかるが乗り換えが楽なルート」など、ユーザーの好みに合わせた多様な解を生成可能。
-- **迂回提案**
-  - 発見したルートに仮想的なコスト（ペナルティ）を与えて再探索することで、**物理的に異なる迂回ルートを強制的に提案**します。事故などのトラブル時にも強いネットワークを構築。
-
-### 2. 未来のリスク予測
-- 単なる「現在の遅延情報」の表示にとどまらず、**過去の統計データとイベント情報**を掛け合わせ、「今は遅れていないが、これから遅れる可能性が高い」という**潜在リスクを可視化**します。
-
-### 3. 意思決定支援インターフェース
-- **4軸スコアリング**: 「速さ」一辺倒ではなく「安定」「快適」「安さ」を加えた多角的な指標でルートを評価。
-- **AI Concierge**: 生成AIがルートの文脈（混雑イベントなど）を読み解き、「荷物が多いならこのルートは避けるべき」といった定性的なアドバイスを提供。
-
-### 4. マルチソースデータ統合
-- **ODPT API + GTFS** データを統合し、JR東日本・東京メトロ・都営地下鉄を横断したシームレスなグラフネットワークを構築。
-
----
-
 ## 技術スタック
 
-### Backend
-![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54) ![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi) ![OpenAI](https://img.shields.io/badge/OpenAI-412991.svg?style=for-the-badge&logo=openai&logoColor=white) ![DigitalOcean](https://img.shields.io/badge/DigitalOcean-%230167ff.svg?style=for-the-badge&logo=digitalOcean&logoColor=white)
+堅牢なバックエンドと、UXを追求したフロントエンドをモダンな技術で統合しています。
 
-- **Python 3.12** / **FastAPI**
-- **SQLite + SQLAlchemy**: グラフデータと統計データの高速処理
-- **OpenAI API**: GPT-4o-mini による診断
-- **ODPT API & GTFS**: JR東日本、東京メトロ、都営地下鉄のデータを統合
+### Backend
+- **Core**: Python 3.12, **FastAPI**
+- **Database**: PostgreSQL
+- **AI**: OpenAI API (GPT-4o-mini)
+- **Data Source**: ODPT API, GTFS-RT (JR東日本, 東京メトロ, 都営地下鉄)
 
 ### Frontend
-![Vite](https://img.shields.io/badge/vite-%23646CFF.svg?style=for-the-badge&logo=vite&logoColor=white) ![TailwindCSS](https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white) ![JavaScript](https://img.shields.io/badge/javascript-%23323330.svg?style=for-the-badge&logo=javascript&logoColor=%23F7DF1E) ![GitHub Pages](https://img.shields.io/badge/github%20pages-121013?style=for-the-badge&logo=github&logoColor=white)
+- **Framework**: **Vite** + Vanilla JavaScript
+- **Styling**: **Tailwind CSS v4**
+- **Hosting**: GitHub Pages
 
-- **Vite** / **JavaScript** (No Framework overhead)
-- **Tailwind CSS v4**: 最新のスタイリングエンジン
-
-### Deployment Architecture
-**完全自動化された、スケーラブルな遅延予測サービス** を目指し、以下の構成で運用します。
-
-| Layer | Service | Details |
-|---|---|---|
-| **Frontend** | **GitHub Pages** | 静的ホスティング。`VITE_API_URL`でバックエンドと通信。 |
-| **Backend** | **DigitalOcean App Platform** | Dockerコンテナとしてデプロイ。オートスケール対応。 |
-| **Database** | **DO Managed PostgreSQL** | SQLiteから移行。フルマネージドで運用。 |
-| **Automation** | **GitHub Actions** | 10分毎にデータを収集し、直接DBへINSERT。 |
-
+### Infrastructure / DevOps
+- **Hosting**: DigitalOcean App Platform (Backend), GitHub Pages (Frontend)
+- **CI/CD**: GitHub Actions (10分ごとのデータ収集・自動デプロイ)
 
 ---
 
-## ディレクトリ構成
-```
+## 📂 ディレクトリ構成
+
+```plaintext
 .
 ├── backend/
-│   ├── main.py              # Entry point
-│   ├── routers/             # API Endpoints (AI, Search, Stations)
-│   ├── services/            # Core Logic (Risk, Routing, Venue)
-│   ├── scripts/             # Data fetchers & importers
-│   │   ├── fetchers/        # Raw data collectors
-│   │   └── importers/       # DB importers
-│   └── data/                # Raw Data & SQLite DB
+│   ├── main.py              # アプリケーションエントリーポイント
+│   ├── services/            # コアロジック
+│   │   ├── routing.py       # 独自グラフ探索エンジン
+│   │   ├── risk.py          # 遅延リスク予測ロジック
+│   │   └── ai.py            # AIコンシェルジュ
+│   ├── scripts/             # データ収集基盤
+│   │   └── fetchers/        # 継続的なデータ収集スクリプト群
+│   └── data/                # 蓄積された統計データ
 │
 └── frontend/
-    ├── src/
-    │   ├── components/      # UI Components (Timeline, Risk Cards)
-    │   └── pages/           # Page Logic
-    └── index.html
+    ├── src/                 # UIロジック
+    └── index.html           # エントリーポイント
 ```
 
 ---
 
-## 📂 使用したオープンデータ
+## 使用したオープンデータ
 
-本アプリケーションは、以下のオープンデータを活用しています。
+本アプリケーションは、以下のオープンデータを活用し、独自の解析を加えて価値を創出しています。
 
-| データ提供元 | データ種別 | 用途 |
+| データ提供元 | データ種別 | 活用方法 |
 |---|---|---|
 | [公共交通オープンデータセンター](https://ckan.odpt.org/) | ODPT API | リアルタイム運行情報・遅延情報の取得 |
-| JR東日本 | GTFS / GTFS-RT | 時刻表・リアルタイム列車位置情報 |
-| 東京メトロ | 列車運行情報API | 運行状況・遅延情報 |
-| 都営地下鉄 | 運行データ | 時刻表・運行状況 |
+| JR東日本 | GTFS / GTFS-RT | 時刻表・リアルタイム列車位置情報の解析 |
+| 東京メトロ | 列車運行情報API | 運行履歴の統計分析 |
+| 都営地下鉄 | 運行データ | 独自グラフネットワークの構築 |
 
 > **ライセンス**: 公共交通オープンデータセンターが定める[利用規約](https://developer.odpt.org/terms)に基づき利用しています。
 
 ---
 
-## ライセンス
+## License
 MIT License
