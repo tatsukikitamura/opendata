@@ -1,3 +1,19 @@
+<style>
+/* CSS to center the content for PDF generation */
+@media print {
+    body, .markdown-body {
+        max-width: 210mm; /* A4 width */
+        margin: 0 auto !important;
+        padding: 20px;
+    }
+}
+/* Fallback for some markdown viewers */
+body, .markdown-body {
+    max-width: 900px;
+    margin: 0 auto;
+}
+</style>
+
 # 🚃 ノー遅延乗り換え - 遅延リスクを避けるルート検索
 
 [![Contest](https://img.shields.io/badge/公共交通オープンデータチャレンジ-2025-blue?style=for-the-badge)](https://challenge2025.odpt.org/)
