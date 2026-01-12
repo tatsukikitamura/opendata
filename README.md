@@ -1,4 +1,4 @@
-# ノー遅延乗り換え - 遅延リスクを避けるルート検索
+# 🚃 ノー遅延乗り換え - 遅延リスクを避けるルート検索
 
 [![Contest](https://img.shields.io/badge/公共交通オープンデータチャレンジ-2025-blue?style=for-the-badge)](https://challenge2025.odpt.org/)
 
@@ -10,7 +10,7 @@
 
 ---
 
-## 本番サイト
+## 🚀 本番サイト
 
 <table align="center">
   <tr>
@@ -37,7 +37,7 @@
 
 ---
 
-##  コンテストに向けた技術的挑戦
+## 🔥 コンテストに向けた技術的挑戦
 
 本アプリケーションは、既存のAPIをラップしただけのツールではありません。
 **「いかに速く着くか」ではなく「いかに確実に着くか」** という問いに答えるため、以下のコア技術を**フルスクラッチで独自実装**しました。
@@ -67,7 +67,7 @@
 
 ---
 
-## 機能ハイライト
+## ✨ 機能ハイライト
 
 ### ユーザーの意思決定を支える「4軸スコアリング」
 単一の正解を押し付けることはしません。4つの指標でルートを評価し、ユーザーの状況に合わせて選べるようにしています。
@@ -97,17 +97,21 @@
 
 ---
 
-## 技術スタック
+## 🛠️ 技術スタック
 
 堅牢なバックエンドと、UXを追求したフロントエンドをモダンな技術で統合しています。
 
 ### Backend
+![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54) ![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi) ![OpenAI](https://img.shields.io/badge/OpenAI-412991.svg?style=for-the-badge&logo=openai&logoColor=white) ![DigitalOcean](https://img.shields.io/badge/DigitalOcean-%230167ff.svg?style=for-the-badge&logo=digitalOcean&logoColor=white)
+
 - **Core**: Python 3.12, **FastAPI**
 - **Database**: PostgreSQL
 - **AI**: OpenAI API (GPT-4o-mini)
 - **Data Source**: ODPT API, GTFS-RT (JR東日本, 東京メトロ, 都営地下鉄)
 
 ### Frontend
+![Vite](https://img.shields.io/badge/vite-%23646CFF.svg?style=for-the-badge&logo=vite&logoColor=white) ![TailwindCSS](https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white) ![JavaScript](https://img.shields.io/badge/javascript-%23323330.svg?style=for-the-badge&logo=javascript&logoColor=%23F7DF1E) ![GitHub Pages](https://img.shields.io/badge/github%20pages-121013?style=for-the-badge&logo=github&logoColor=white)
+
 - **Framework**: **Vite** + Vanilla JavaScript
 - **Styling**: **Tailwind CSS v4**
 - **Hosting**: GitHub Pages
@@ -139,7 +143,7 @@
 
 ---
 
-## 使用したオープンデータ
+## 📊 使用したオープンデータ
 
 本アプリケーションは、以下のオープンデータを活用し、独自の解析を加えて価値を創出しています。
 
@@ -154,5 +158,5 @@
 
 ---
 
-## License
+## 📜 License
 MIT License
