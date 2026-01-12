@@ -81,7 +81,8 @@ def get_venue_warnings(segments: List[dict]) -> dict:
                     "station": station,
                     "venue": venue.get("name"),
                     "capacity": venue.get("capacity"),
-                    "note": venue.get("note", "")
+                    "note": venue.get("note", ""),
+                    "url": venue.get("url")  # Include official URL if available
                 })
     
     passing_info = []

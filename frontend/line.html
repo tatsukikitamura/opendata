@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>遅延履歴詳細 - Train Route Search</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen pb-20">
+
+    <!-- Header -->
+    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200">
+        <div class="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
+            <button id="back-button" class="p-2 -ml-2 text-slate-600 hover:text-slate-900 rounded-full hover:bg-slate-100 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+            </button>
+            <h1 class="font-bold text-lg truncate flex-1 text-center pr-10" id="header-title">路線情報</h1>
+        </div>
+    </header>
+
+    <main class="max-w-3xl mx-auto px-4 py-6">
+        
+        <!-- Line Info Header -->
+        <div class="mb-8 text-center">
+            <h2 class="text-3xl font-bold text-slate-800 mb-2" id="line-name">---</h2>
+            <p class="text-slate-500 text-sm">直近の遅延情報 (最大20件)</p>
+        </div>
+
+        <!-- History List -->
+        <div id="history-list" class="space-y-4">
+            <!-- Loading State -->
+            <div class="animate-pulse space-y-4">
+                <div class="h-24 bg-slate-200 rounded-xl"></div>
+                <div class="h-24 bg-slate-200 rounded-xl"></div>
+                <div class="h-24 bg-slate-200 rounded-xl"></div>
+            </div>
+        </div>
+
+        <!-- Empty State (Hidden by default) -->
+        <div id="empty-state" class="hidden text-center py-12">
+            <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <p class="text-slate-600 font-medium">遅延データはありません</p>
+            <p class="text-slate-400 text-sm mt-1">この路線の直近の遅延記録は見つかりませんでした。</p>
+        </div>
+
+    </main>
+
+    <script type="module">
+        import { getDelayHistory } from './src/lib/api.js';
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const params = new URLSearchParams(window.location.search);
+            const lineName = params.get('line'); // Short ID like "ChuoRapid"
+            
+            // Handle Back Button
+            document.getElementById('back-button').addEventListener('click', () => {
+                window.history.back();
+            });
+
+            if (!lineName) {
+                document.getElementById('history-list').innerHTML = `
+                    <div class="p-4 bg-red-50 text-red-600 rounded-xl border border-red-100 text-center">
+                        路線が指定されていません。
+                    </div>
+                `;
+                return;
+            }
+
+            // Set Header immediately (will update with full JA name after fetch if possible, or use parameter)
+            // For better UX, we might want to pass the display name in URL too, or map it here.
+            // But the API response includes `railway_name` (JA name) so we can update it then.
+            document.getElementById('line-name').textContent = lineName;
+
+            try {
+                const history = await getDelayHistory(lineName);
+                renderHistory(history);
+            } catch (e) {
+                console.error(e);
+                document.getElementById('history-list').innerHTML = `
+                    <div class="p-4 bg-red-50 text-red-600 rounded-xl border border-red-100 text-center">
+                        データの取得に失敗しました。<br>
+                        <span class="text-sm opacity-75">${e.message}</span>
+                    </div>
+                `;
+            }
+        });
+
+        function renderHistory(records) {
+            const container = document.getElementById('history-list');
+            const emptyState = document.getElementById('empty-state');
+            const lineNameEl = document.getElementById('line-name');
+
+            container.innerHTML = '';
+
+            if (!records || records.length === 0) {
+                container.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            // Update Line Name from first record (which has JA name)
+            if (records[0].railway_name) {
+                lineNameEl.textContent = records[0].railway_name;
+                document.getElementById('header-title').textContent = records[0].railway_name + ' 遅延履歴';
+            }
+
+            records.forEach(record => {
+                const date = new Date(record.timestamp);
+                const dateStr = `${date.getMonth() + 1}/${date.getDate()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+                
+                const el = document.createElement('div');
+                el.className = 'bg-white rounded-xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-shadow';
+                el.innerHTML = `
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-sm font-mono text-slate-500 bg-slate-100 px-2 py-1 rounded">${dateStr}</span>
+                        <span class="px-2 py-1 text-xs font-bold bg-amber-100 text-amber-700 rounded border border-amber-200">遅延</span>
+                    </div>
+                    <p class="text-slate-800 font-medium">${record.status_text || '遅延が発生しました'}</p>
+                `;
+                container.appendChild(el);
+            });
+        }
+    </script>
+</body>
+</html>

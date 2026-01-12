@@ -46,14 +46,23 @@ async function executeSearch(from, to, time, dayType = null) {
 
         document.getElementById("loading-state").classList.add("hidden");
         document.getElementById("result-state").classList.remove("hidden");
-        showListView();
+
+        // Check if a specific route was selected (e.g. back from history)
+        const params = new URLSearchParams(window.location.search);
+        const routeIndex = params.get('route');
+
+        if (routeIndex !== null && allRoutes[routeIndex]) {
+            showDetailView(parseInt(routeIndex), false); // false = don't push state again inside
+        } else {
+            showListView(false);
+        }
 
     } catch (e) {
         if (e.message) showError(e.message);
     }
 }
 
-function showListView() {
+function showListView(updateUrl = true) {
     document.getElementById("route-list-view").classList.remove("hidden");
     document.getElementById("route-detail-view").classList.add("hidden");
     
@@ -62,9 +71,15 @@ function showListView() {
     document.getElementById("main-header").classList.remove("hidden");
     
     document.getElementById("route-header").textContent = "検索結果";
+
+    if (updateUrl) {
+        const url = new URL(window.location);
+        url.searchParams.delete('route');
+        window.history.replaceState({}, '', url);
+    }
 }
 
-function showDetailView(index) {
+function showDetailView(index, updateUrl = true) {
     document.getElementById("route-list-view").classList.add("hidden");
     document.getElementById("route-detail-view").classList.remove("hidden");
     
@@ -73,6 +88,13 @@ function showDetailView(index) {
     document.getElementById("main-header").classList.add("hidden");
     
     renderRouteDetail(index);
+
+    if (updateUrl) {
+        const url = new URL(window.location);
+        url.searchParams.set('route', index);
+        console.log("Debug: Updating URL state to route:", index, url.toString());
+        window.history.replaceState({}, '', url.toString());
+    }
 }
 
 function renderRouteList() {
@@ -421,7 +443,7 @@ function renderDelayWarnings(route) {
             return `
                 <div class="bg-white/60 rounded-lg p-3 border border-red-100 mb-2 last:mb-0">
                     <div class="flex items-center justify-between">
-                        <p class="font-medium text-red-800">${warning.railway}</p>
+                        <a href="line.html?line=${encodeURIComponent(warning.railway_name_en || warning.railway)}" class="font-medium text-red-800 hover:underline hover:text-red-900">${warning.railway}</a>
                         ${timeDisplay ? `<span class="text-xs text-red-400">${timeDisplay}</span>` : ''}
                     </div>
                     <p class="text-xs text-slate-500 mt-1">${warning.reason || "遅延が発生しています"}</p>
@@ -446,7 +468,17 @@ function renderDelayWarnings(route) {
             content = `
                 <p class="text-xs text-slate-500 mb-2">過去の遅延データに基づく予測:</p>
                 <div class="space-y-2">
-                    ${risk.reasons.map(r => createInfoCard(r.railway || '', r.rate || r.display || '', colorScheme)).join('')}
+                    ${risk.reasons.map(r => {
+                        // Use id if available (from backend 1.1 update), else fallback or empty
+                        // If 'id' is present, wrap in link.
+                        const titleContent = r.id ? `<a href="line.html?line=${encodeURIComponent(r.id)}" class="hover:underline hover:opacity-80">${r.railway}</a>` : (r.railway || '');
+                        // createInfoCard expects plain text usually but I can inject HTML if I modify it or just passing string works if not escaped?
+                        // Actually createInfoCard uses template literal so it processes string as HTML content inside innerHTML implicitly?
+                        // wait, createInfoCard is: 
+                        // const createInfoCard = (title, subtitle, colorClass = 'slate') => `... <p class="font-medium ...">${title}</p> ...`
+                        // So sending HTML string for title works.
+                        return createInfoCard(titleContent, r.rate || r.display || '', colorScheme);
+                    }).join('')}
                 </div>
             `;
         } else {
@@ -466,9 +498,11 @@ function renderDelayWarnings(route) {
             content += `
                 <p class="text-xs text-amber-600 font-medium mb-2">乗換駅周辺</p>
                 <div class="space-y-2 mb-3">
-                    ${venueWarnings.transfer_warnings.map(w => 
-                        createInfoCard(`${w.station}駅 → ${w.venue}`, `収容人数: ${w.capacity.toLocaleString()}人 / ${w.note}`, 'amber')
-                    ).join('')}
+                    ${venueWarnings.transfer_warnings.map(w => {
+                        const linkUrl = w.url || `https://www.google.com/search?q=${encodeURIComponent(w.venue + ' イベント 公式')}`;
+                        const venueLink = `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer" class="underline hover:text-amber-600 decoration-amber-400 underline-offset-2">${w.venue}</a>`;
+                        return createInfoCard(`${w.station}駅 → ${venueLink}`, `収容人数: ${w.capacity.toLocaleString()}人 / ${w.note}`, 'amber');
+                    }).join('')}
                 </div>
             `;
         }

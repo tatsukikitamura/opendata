@@ -91,6 +91,7 @@ def get_route_risk(route: dict, departure_time: str) -> dict:
                                  break
                     
                     reasons.append({
+                        "id": railway_short,
                         "railway": display_name,
                         "rate": f"{stats['delayed']}/{stats['total']}件 ({rate_pct:.1f}%)",
                         "latest_reason": latest_reason,
@@ -101,7 +102,7 @@ def get_route_risk(route: dict, departure_time: str) -> dict:
         # Check for current real-time delays
         current_delays_data = get_current_delays()
         current_delays = current_delays_data["delays"]
-        current_delayed_railways = {d["railway_name"] for d in current_delays}
+        current_delayed_railways = {d["railway_name_en"] for d in current_delays}
         
         has_current_delay = bool(railways_checked & current_delayed_railways)
         
@@ -122,6 +123,49 @@ def get_route_risk(route: dict, departure_time: str) -> dict:
             "reasons": reasons
         }
         
+    finally:
+        db.close()
+
+
+def get_railway_delay_history(railway_name: str, limit: int = 20) -> List[dict]:
+    """
+    Get historical delay records for a specific railway.
+    
+    Args:
+        railway_name (str): Short name (e.g. "ChuoRapid") or full ID
+        limit (int): Max records to return
+    
+    Returns:
+        List[dict]: List of delay records
+    """
+    db = SessionLocal()
+    try:
+        # Normalize name if needed (simple check)
+        # If passed "odpt.Railway:..." extract the short part common in our DB usage?
+        # The DB stores `railway_name` as what we call normalized name (e.g. "ChuoRapid" or "Ginza") 
+        # OR sometimes the full ID depending on how we imported.
+        # Let's check `_get_railway_stats` logic:
+        # simple_name = railway_name.split(".")[-1] if "." in railway_name else railway_name
+        
+        simple_name = railway_name.split(".")[-1] if "." in railway_name else railway_name
+        
+        query = select(TrainStatus).where(
+            TrainStatus.railway_name == simple_name,
+            TrainStatus.is_delayed == True
+        ).order_by(TrainStatus.timestamp.desc()).limit(limit)
+        
+        records = db.execute(query).scalars().all()
+        
+        results = []
+        for r in records:
+            results.append({
+                "timestamp": r.timestamp,
+                "status": r.status,
+                "status_text": r.status_text,
+                "railway_name": r.railway_name
+            })
+            
+        return results
     finally:
         db.close()
 

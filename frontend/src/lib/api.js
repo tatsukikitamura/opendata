@@ -98,3 +98,19 @@ export async function getCurrentDelays() {
         return { updated_at: null, delays: [] };
     }
 }
+
+/**
+ * Get delay history for a railway.
+ * @param {string} railwayName - Short name or ID
+ * @returns {Promise<Array>} List of historical delay records
+ */
+export async function getDelayHistory(railwayName) {
+    try {
+        const res = await fetch(`${API_BASE}/api/delays/history?railway=${encodeURIComponent(railwayName)}`);
+        if (!res.ok) throw new Error("History fetch failed");
+        return await res.json();
+    } catch (e) {
+        console.error("Delay History Error:", e);
+        throw e;
+    }
+}
