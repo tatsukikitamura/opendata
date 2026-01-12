@@ -12,15 +12,28 @@
 
 ## 本番サイト
 
-<div align="center">
-
-**[👉 https://opendata.tatsuki.dev](https://opendata.tatsuki.dev)**
-
-<img src="docs/index.png" width="48%" alt="トップ画面" style="border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
-<img src="docs/route_list.png" width="48%" alt="検索画面" style="border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
-<img src="docs/route_detail.png" width="48%" alt="経路詳細画面" style="border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
-
-</div>
+<table align="center">
+  <tr>
+    <td align="center" width="33%">
+      <img src="docs/index.png" alt="トップ画面" style="border-radius: 10px;">
+      <br>
+      <b>トップ画面</b><br>
+      直感的な検索インターフェース
+    </td>
+    <td align="center" width="33%">
+      <img src="docs/route_list.png" alt="検索結果" style="border-radius: 10px;">
+      <br>
+      <b>ルート比較</b><br>
+      4軸スコアで最適な選択
+    </td>
+    <td align="center" width="33%">
+      <img src="docs/route_detail.png" alt="詳細画面" style="border-radius: 10px;">
+      <br>
+      <b>詳細・リスク表示</b><br>
+      未来の遅延リスクを可視化
+    </td>
+  </tr>
+</table>
 
 ---
 
