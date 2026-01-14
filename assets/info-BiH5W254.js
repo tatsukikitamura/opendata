@@ -1,0 +1,1 @@
+import"./modulepreload-polyfill-B5Qt9EMX.js";/* empty css              */import r from"https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";r.initialize({startOnLoad:!0,theme:"base",themeVariables:{primaryColor:"#ffffff",primaryTextColor:"#1e293b",primaryBorderColor:"#059669",lineColor:"#64748b",secondaryColor:"#f1f5f9",tertiaryColor:"#ecfdf5"}});

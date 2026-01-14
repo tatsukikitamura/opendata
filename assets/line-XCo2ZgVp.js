@@ -1,4 +1,4 @@
-import{b as i}from"./api-BA95tgqH.js";document.addEventListener("DOMContentLoaded",async()=>{const t=new URLSearchParams(window.location.search).get("line");if(document.getElementById("back-button").addEventListener("click",()=>{window.history.back()}),!t){document.getElementById("history-list").innerHTML=`
+import"./modulepreload-polyfill-B5Qt9EMX.js";import{b as i}from"./api-DS4I12Yo.js";document.addEventListener("DOMContentLoaded",async()=>{const t=new URLSearchParams(window.location.search).get("line");if(document.getElementById("back-button").addEventListener("click",()=>{window.history.back()}),!t){document.getElementById("history-list").innerHTML=`
                     <div class="p-4 bg-red-50 text-red-600 rounded-xl border border-red-100 text-center">
                         路線が指定されていません。
                     </div>
