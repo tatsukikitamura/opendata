@@ -17,6 +17,7 @@ export default defineConfig({
                 detail: resolve(__dirname, 'detail.html'),
                 info: resolve(__dirname, 'info.html'),
                 evaluation: resolve(__dirname, 'evaluation.html'),
+                line: resolve(__dirname, 'line.html')
             },
         },
     },
