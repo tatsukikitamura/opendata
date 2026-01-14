@@ -10,6 +10,21 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ 
+      startOnLoad: true,
+      theme: 'base',
+      themeVariables: {
+        primaryColor: '#ffffff',
+        primaryTextColor: '#1e293b',
+        primaryBorderColor: '#059669',
+        lineColor: '#64748b',
+        secondaryColor: '#f1f5f9',
+        tertiaryColor: '#ecfdf5'
+      }
+    });
+  </script>
 </head>
 
 <body class="bg-slate-50 text-slate-800 font-sans antialiased selection:bg-emerald-500 selection:text-white">
@@ -198,6 +213,23 @@
         </a>
       </section>
 
+      <!-- GitHub Repository -->
+      <section class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6">
+        <h2 class="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+          <span>💻</span> ソースコード
+        </h2>
+        <p class="text-slate-600 mb-4">
+          本アプリケーションのソースコードは GitHub で公開しています。
+        </p>
+        <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+          <p class="font-medium text-slate-800 mb-1">GitHub リポジトリ</p>
+          <a href="https://github.com/tatsukikitamura/opendata" target="_blank" 
+             class="text-emerald-600 hover:underline break-all">
+            https://github.com/tatsukikitamura/opendata
+          </a>
+        </div>
+      </section>
+
       <!-- Tech Stack -->
       <section class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6">
         <h2 class="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
@@ -205,7 +237,12 @@
         </h2>
         <div class="grid grid-cols-2 gap-4">
           <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
-            <p class="font-bold text-slate-800 mb-1">Frontend</p>
+            <p class="font-bold text-slate-800 mb-3">Frontend</p>
+            <div class="flex flex-wrap gap-2 mb-2">
+              <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/javascript/javascript-original.svg" alt="JavaScript" class="w-6 h-6" title="JavaScript">
+              <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/tailwindcss/tailwindcss-original.svg" alt="TailwindCSS" class="w-6 h-6" title="TailwindCSS">
+              <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/vitejs/vitejs-original.svg" alt="Vite" class="w-6 h-6" title="Vite">
+            </div>
             <ul class="text-sm text-slate-500 space-y-1">
               <li>• HTML / CSS / JavaScript</li>
               <li>• TailwindCSS</li>
@@ -213,30 +250,72 @@
             </ul>
           </div>
           <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
-            <p class="font-bold text-slate-800 mb-1">Backend</p>
+            <p class="font-bold text-slate-800 mb-3">Backend</p>
+            <div class="flex flex-wrap gap-2 mb-2">
+              <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg" alt="Python" class="w-6 h-6" title="Python">
+              <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/fastapi/fastapi-original.svg" alt="FastAPI" class="w-6 h-6" title="FastAPI">
+              <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/postgresql/postgresql-original.svg" alt="PostgreSQL" class="w-6 h-6" title="PostgreSQL">
+            </div>
             <ul class="text-sm text-slate-500 space-y-1">
-              <li>• Python</li>
+              <li>• Python 3.12</li>
               <li>• FastAPI</li>
-              <li>• SQLite</li>
+              <li>• PostgreSQL</li>
             </ul>
           </div>
           <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
-            <p class="font-bold text-slate-800 mb-1">Data</p>
+            <p class="font-bold text-slate-800 mb-3">Data / AI</p>
+            <div class="flex flex-wrap gap-2 mb-2">
+              <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/openapi/openapi-original.svg" alt="OpenAPI" class="w-6 h-6" title="ODPT API">
+              <img src="https://upload.wikimedia.org/wikipedia/commons/0/04/ChatGPT_logo.svg" alt="OpenAI" class="w-6 h-6" title="OpenAI">
+            </div>
             <ul class="text-sm text-slate-500 space-y-1">
               <li>• ODPT API</li>
-              <li>• GTFS</li>
-              <li>• OpenAI API</li>
-              <li>• SQLAlchemy</li>
+              <li>• GTFS / GTFS-RT</li>
+              <li>• OpenAI API (GPT-4o-mini)</li>
             </ul>
           </div>
           <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
-            <p class="font-bold text-slate-800 mb-1">Algorithm</p>
+            <p class="font-bold text-slate-800 mb-3">Infrastructure</p>
+            <div class="flex flex-wrap gap-2 mb-2">
+              <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/digitalocean/digitalocean-original.svg" alt="DigitalOcean" class="w-6 h-6" title="DigitalOcean">
+              <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/github/github-original.svg" alt="GitHub" class="w-6 h-6" title="GitHub Pages & Actions">
+            </div>
             <ul class="text-sm text-slate-500 space-y-1">
-              <li>• Dijkstra's Algorithm</li>
-              <li>• Delay Risk Analysis</li>
-              <li>• BeautifulSoup4 (Scraping)</li>
+              <li>• DigitalOcean</li>
+              <li>• GitHub Pages</li>
+              <li>• GitHub Actions</li>
             </ul>
           </div>
+        </div>
+      </section>
+
+      <!-- Architecture Diagram -->
+      <section class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6">
+        <h2 class="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+          <span>🏗️</span> システム構成
+        </h2>
+        <p class="text-slate-600 mb-4">GitHub Actionsで10分ごとにODPTデータを自動収集</p>
+        <div class="overflow-x-auto">
+          <pre class="mermaid">
+flowchart TB
+    subgraph DataCollection["データ収集 (GitHub Actions)"]
+        GHA[" 10分ごと実行"]
+        ODPT["ODPT API"]
+        GHA -->|取得| ODPT
+    end
+    subgraph Frontend["Frontend (GitHub Pages)"]
+        A["Vite + JS"]
+    end
+    subgraph Backend["Backend (DigitalOcean)"]
+        B["FastAPI"]
+        C[(" PostgreSQL")]
+        D[" GPT-4o-mini"]
+        B <--> C
+        B <--> D
+    end
+    ODPT -->|保存| C
+    A <-->|REST API| B
+          </pre>
         </div>
       </section>
 
