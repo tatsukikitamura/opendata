@@ -160,7 +160,7 @@ def calculate_route_scores(route: dict, all_routes: list) -> dict:
     risk = route.get("risk", {})
     risk_score = risk.get("score", 0) # This is a count of delay events
     
-    reliability = 5.0 - (risk_score * 1.0)
+    reliability = 5.0 - (risk_score * 0.4)
     scores["reliability"] = round(max(1.0, min(5.0, reliability)), 1)
     
     # 4. Cost Score

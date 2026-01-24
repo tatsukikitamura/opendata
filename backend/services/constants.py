@@ -56,6 +56,7 @@ JR_EAST_RAILWAYS = [
 TOKYO_METRO_RAILWAYS = [
     "odpt.Railway:TokyoMetro.Ginza",
     "odpt.Railway:TokyoMetro.Marunouchi",
+    "odpt.Railway:TokyoMetro.MarunouchiBranch",  # 丸ノ内線支線（方南町支線）
     "odpt.Railway:TokyoMetro.Hibiya",
     "odpt.Railway:TokyoMetro.Tozai",
     "odpt.Railway:TokyoMetro.Chiyoda",
@@ -65,12 +66,14 @@ TOKYO_METRO_RAILWAYS = [
     "odpt.Railway:TokyoMetro.Fukutoshin",
 ]
 
-# Toei Subway Railways
+# Toei Railways (Subway + Tram + Liner)
 TOEI_RAILWAYS = [
     "odpt.Railway:Toei.Asakusa",
     "odpt.Railway:Toei.Mita",
     "odpt.Railway:Toei.Shinjuku",
     "odpt.Railway:Toei.Oedo",
+    "odpt.Railway:Toei.Arakawa",        # 荒川線（都電）
+    "odpt.Railway:Toei.NipporiToneri",  # 日暮里・舎人ライナー
 ]
 
 # All railways combined
@@ -200,6 +203,7 @@ METRO_TOEI_RAILWAY_INFO = {
     # Metro
     "odpt.Railway:TokyoMetro.Ginza": {"name_ja": "銀座線", "name_en": "Ginza Line"},
     "odpt.Railway:TokyoMetro.Marunouchi": {"name_ja": "丸ノ内線", "name_en": "Marunouchi Line"},
+    "odpt.Railway:TokyoMetro.MarunouchiBranch": {"name_ja": "丸ノ内線支線", "name_en": "Marunouchi Branch Line"},
     "odpt.Railway:TokyoMetro.Hibiya": {"name_ja": "日比谷線", "name_en": "Hibiya Line"},
     "odpt.Railway:TokyoMetro.Tozai": {"name_ja": "東西線", "name_en": "Tozai Line"},
     "odpt.Railway:TokyoMetro.Chiyoda": {"name_ja": "千代田線", "name_en": "Chiyoda Line"},
@@ -212,4 +216,6 @@ METRO_TOEI_RAILWAY_INFO = {
     "odpt.Railway:Toei.Mita": {"name_ja": "三田線", "name_en": "Mita Line"},
     "odpt.Railway:Toei.Shinjuku": {"name_ja": "新宿線", "name_en": "Shinjuku Line"},
     "odpt.Railway:Toei.Oedo": {"name_ja": "大江戸線", "name_en": "Oedo Line"},
+    "odpt.Railway:Toei.Arakawa": {"name_ja": "荒川線", "name_en": "Arakawa Line"},
+    "odpt.Railway:Toei.NipporiToneri": {"name_ja": "日暮里・舎人ライナー", "name_en": "Nippori-Toneri Liner"},
 }

@@ -450,17 +450,17 @@ function renderDelayWarnings(route) {
                 </div>
             `;
         }).join('');
-        container.appendChild(createAccordion('realtime', '📡', `運行情報 (${realTimeWarnings.length}件の遅延)`, 'red', content, true));
+        container.appendChild(createAccordion('realtime', '📡', `現在の運行情報 (${realTimeWarnings.length}件の遅延)`, 'red', content, true));
     } else {
         const content = createSuccessCard('平常運行', '現在、すべての路線で遅延は発生していません');
-        container.appendChild(createAccordion('realtime', '📡', '運行情報', 'emerald', content, false));
+        container.appendChild(createAccordion('realtime', '📡', '現在の運行情報', 'emerald', content, false));
     }
 
     // ===== 2. 遅延リスク予測 (📊) =====
     {
         hasContent = true;
         const colorScheme = risk.level === 'HIGH' ? 'red' : risk.level === 'MEDIUM' ? 'amber' : 'emerald';
-        const levelText = risk.level === 'HIGH' ? '高リスク' : risk.level === 'MEDIUM' ? '注意' : '低リスク';
+        const levelText = risk.level === 'HIGH' ? '高' : risk.level === 'MEDIUM' ? '中' : '低';
 
         let content = '';
 

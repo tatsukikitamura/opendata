@@ -175,7 +175,10 @@ def parse_train_status(raw_data: list) -> list:
             status_text = str(text_raw) if text_raw else ""
         
         # Determine if delayed
-        is_delayed = "平常" not in status_text if status_text else False
+        # Check for keywords that indicate normal operation
+        normal_keywords = ["平常", "遅延はありません", "平常どおり", "通常運転"]
+        is_normal = any(kw in status_text for kw in normal_keywords) if status_text else True
+        is_delayed = not is_normal
         
         records.append({
             "timestamp": timestamp,
