@@ -36,6 +36,7 @@ ACCESS_TOKEN = os.environ.get("ODPT_ACCESS_TOKEN")
 ACCESS_TOKEN_METRO = os.environ.get("ODPT_ACCESS_TOKEN_METRO") # Specific token for Metro
 
 BASE_URL = "https://api-challenge.odpt.org/api/v4"
+METRO_BASE_URL = "https://api.odpt.org/api/v4"  # Separate API for Metro/Toei
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "delays"
 
 # GTFS-RT URLs
@@ -64,17 +65,47 @@ def fetch_train_information() -> list:
     url = f"{BASE_URL}/odpt:TrainInformation"
     params = {"acl:consumerKey": ACCESS_TOKEN}
     
-    print(f"Fetching ODPT JSON: {url}")
+    print(f"Fetching ODPT JSON (JR): {url}")
     
     try:
         resp = requests.get(url, params=params, timeout=30)
         resp.raise_for_status()
         
         data = resp.json()
-        print(f"Fetched {len(data)} records from ODPT JSON")
+        print(f"Fetched {len(data)} records from ODPT JSON (JR)")
         return data
     except Exception as e:
-        print(f"Failed to fetch ODPT JSON: {e}")
+        print(f"Failed to fetch ODPT JSON (JR): {e}")
+        return []
+
+
+def fetch_metro_train_information() -> list:
+    """
+    Fetch train information from ODPT JSON API for Metro and Toei.
+    Uses METRO token to access api.odpt.org endpoint.
+    Returns list of train status records.
+    """
+    token = ACCESS_TOKEN_METRO if ACCESS_TOKEN_METRO else ACCESS_TOKEN
+    if not token:
+        print("Error: No token available for Metro API")
+        return []
+
+    url = f"{METRO_BASE_URL}/odpt:TrainInformation"
+    params = {"acl:consumerKey": token}
+    
+    print(f"Fetching ODPT JSON (Metro/Toei): {url}")
+    
+    try:
+        resp = requests.get(url, params=params, timeout=30)
+        resp.raise_for_status()
+        
+        data = resp.json()
+        # Filter to only include TokyoMetro and Toei
+        filtered = [d for d in data if 'TokyoMetro' in d.get('odpt:operator', '') or 'Toei' in d.get('odpt:operator', '')]
+        print(f"Fetched {len(filtered)} records from ODPT JSON (Metro/Toei)")
+        return filtered
+    except Exception as e:
+        print(f"Failed to fetch ODPT JSON (Metro/Toei): {e}")
         return []
 
 
@@ -399,13 +430,17 @@ if __name__ == "__main__":
     json_data = fetch_train_information()
     all_records.extend(parse_train_status(json_data))
     
-    # 2. Fetch Metro Alert
-    # Use Metro specific token if available, otherwise fallback to default
-    metro_token = ACCESS_TOKEN_METRO if ACCESS_TOKEN_METRO else ACCESS_TOKEN
-    metro_feed = fetch_gtfs_rt(METRO_ALERT_URL, token=metro_token)
-    metro_records = parse_alerts(metro_feed, "odpt.Operator:TokyoMetro")
-    print(f"Parsed {len(metro_records)} Metro alert records")
-    all_records.extend(metro_records)
+    # 2. Fetch Metro/Toei JSON API (always returns all lines including normal operation)
+    metro_json_data = fetch_metro_train_information()
+    all_records.extend(parse_train_status(metro_json_data))
+    
+    # 3. Fetch Metro Alert (GTFS-RT) - only contains alerts during incidents
+    # Skipped now since we have JSON API data above
+    # metro_token = ACCESS_TOKEN_METRO if ACCESS_TOKEN_METRO else ACCESS_TOKEN
+    # metro_feed = fetch_gtfs_rt(METRO_ALERT_URL, token=metro_token)
+    # metro_records = parse_alerts(metro_feed, "odpt.Operator:TokyoMetro")
+    # print(f"Parsed {len(metro_records)} Metro alert records")
+    # all_records.extend(metro_records)
     
     # 3. Fetch Toei Alert (Public)
     # If standard URL fails (403), try public. Test script showed Public worked for TripUpdate.
