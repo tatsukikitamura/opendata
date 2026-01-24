@@ -138,7 +138,7 @@ import"./modulepreload-polyfill-B5Qt9EMX.js";/* empty css              */import{
                     </div>
                     <p class="text-xs text-slate-500 mt-1">${n.reason||"遅延が発生しています"}</p>
                 </div>
-            `}).join("");e.appendChild(d("realtime","📡",`運行情報 (${l.length}件の遅延)`,"red",r,!0))}else{const r=p("平常運行","現在、すべての路線で遅延は発生していません");e.appendChild(d("realtime","📡","運行情報","emerald",r,!1))}{m=!0;const r=t.level==="HIGH"?"red":t.level==="MEDIUM"?"amber":"emerald",n=t.level==="HIGH"?"高リスク":t.level==="MEDIUM"?"注意":"低リスク";let o="";t.reasons.length>0?o=`
+            `}).join("");e.appendChild(d("realtime","📡",`現在の運行情報 (${l.length}件の遅延)`,"red",r,!0))}else{const r=p("平常運行","現在、すべての路線で遅延は発生していません");e.appendChild(d("realtime","📡","現在の運行情報","emerald",r,!1))}{m=!0;const r=t.level==="HIGH"?"red":t.level==="MEDIUM"?"amber":"emerald",n=t.level==="HIGH"?"高":t.level==="MEDIUM"?"中":"低";let o="";t.reasons.length>0?o=`
                 <p class="text-xs text-slate-500 mb-2">過去の遅延データに基づく予測:</p>
                 <div class="space-y-2">
                     ${t.reasons.map(c=>{const v=c.id?`<a href="line.html?line=${encodeURIComponent(c.id)}" class="hover:underline hover:opacity-80">${c.railway}</a>`:c.railway||"";return u(v,c.rate||c.display||"",r)}).join("")}
